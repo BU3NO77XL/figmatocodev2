@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  lint-security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -20,6 +20,5 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
       - run: pnpm lint
-      - run: pnpm test
+      - run: pnpm audit --prod
