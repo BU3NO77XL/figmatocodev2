@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { HelpCircle, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { useI18n } from "../i18n";
 
 interface FormFieldProps {
   // Common props
@@ -38,11 +39,12 @@ const FormField = React.memo(
     max,
     suffix,
     disallowedPattern = /\s/,
-    disallowedMessage = "Input cannot contain spaces",
+    disallowedMessage,
     showPreview = false,
     previewExamples = ["flex"],
     previewTransform,
   }: FormFieldProps) => {
+    const { t } = useI18n();
     // Use internal state to manage the input value
     const [inputValue, setInputValue] = useState(String(initialValue));
     const [isFocused, setIsFocused] = useState(false);
@@ -66,7 +68,7 @@ const FormField = React.memo(
       if (type === "text") {
         if (disallowedPattern && disallowedPattern.test(value)) {
           setHasError(true);
-          setErrorMessage(disallowedMessage);
+          setErrorMessage(disallowedMessage ?? t("form.noSpaces"));
           return false;
         }
         setHasError(false);
@@ -79,7 +81,7 @@ const FormField = React.memo(
         // Check for non-numeric characters
         if (/[^0-9]/.test(value)) {
           setHasError(true);
-          setErrorMessage("Only numbers are allowed");
+          setErrorMessage(t("form.numbersOnly"));
           return false;
         }
 
@@ -87,19 +89,19 @@ const FormField = React.memo(
 
         if (isNaN(numValue)) {
           setHasError(true);
-          setErrorMessage("Please enter a valid number");
+          setErrorMessage(t("form.validNumber"));
           return false;
         }
 
         if (min !== undefined && numValue < min) {
           setHasError(true);
-          setErrorMessage(`Minimum value is ${min}`);
+          setErrorMessage(t("form.minimum", { value: min }));
           return false;
         }
 
         if (max !== undefined && numValue > max) {
           setHasError(true);
-          setErrorMessage(`Maximum value is ${max}`);
+          setErrorMessage(t("form.maximum", { value: max }));
           return false;
         }
 
@@ -153,7 +155,7 @@ const FormField = React.memo(
           // Handle parsing errors
           console.error("Invalid JSON configuration:", error);
           setHasError(true);
-          setErrorMessage(`Invalid JSON configuration: ${error}`);
+          setErrorMessage(t("form.invalidJson", { error: String(error) }));
           // You could show an error message to the user here
           // Or reset to default/previous value
           return false;
@@ -257,7 +259,7 @@ const FormField = React.memo(
 
           {showSuccess && (
             <span className="text-xs text-green-500 flex items-center gap-1 animate-fade-in-out">
-              <Check className="w-3 h-3" /> Applied
+              <Check className="w-3 h-3" /> {t("form.applied")}
             </span>
           )}
         </div>
@@ -331,7 +333,7 @@ const FormField = React.memo(
                   : "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"
               }`}
             >
-              Done
+              {t("form.done")}
             </button>
           )}
         </div>
@@ -339,7 +341,8 @@ const FormField = React.memo(
         {showPreview && inputValue && !hasError && (
           <div className="flex flex-col w-full mt-2.5 rounded-md bg-gray-50 dark:bg-gray-800/50 p-2.5 border border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              Preview{hasChanges ? " (not applied yet)" : ""}:
+              {t("form.preview")}
+              {hasChanges ? ` (${t("form.notApplied")})` : ""}:
             </p>
             <div className="flex flex-wrap gap-1.5">
               {previewExamples.map((example) => (
@@ -351,7 +354,7 @@ const FormField = React.memo(
 
             {hasChanges && (
               <p className="text-xs text-amber-500 dark:text-amber-400 mt-2 italic">
-                Press Enter or click Done to apply changes
+                {t("form.applyHint")}
               </p>
             )}
           </div>

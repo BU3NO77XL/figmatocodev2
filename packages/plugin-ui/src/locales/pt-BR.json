@@ -1,0 +1,198 @@
+{
+  "language": {
+    "label": "Idioma",
+    "english": "Inglês",
+    "portuguese": "Português"
+  },
+  "navigation": { "about": "Sobre" },
+  "emptyState": {
+    "title": "Nada selecionado",
+    "description": "Selecione uma camada para começar"
+  },
+  "loading": {
+    "title": "Gerando código...",
+    "description": "Imagens e camadas complexas levam mais tempo para processar"
+  },
+  "colors": {
+    "title": "Paleta de cores",
+    "count_one": "{{count}} cor",
+    "count_other": "{{count}} cores"
+  },
+  "gradients": {
+    "title": "Gradientes",
+    "count_one": "{{count}} gradiente",
+    "count_other": "{{count}} gradientes",
+    "copy": "Copiar gradiente {{index}}: {{value}}"
+  },
+  "warnings": {
+    "count_one": "{{count}} aviso",
+    "count_other": "{{count}} avisos",
+    "criticalCount": "{{count}} crítico(s)",
+    "all": "Todos ({{count}})",
+    "critical": "Críticos ({{count}})",
+    "other": "Outros ({{count}})",
+    "tip": "Dica:",
+    "info": "Informações",
+    "footer": "Corrigir os avisos pode melhorar a qualidade do código gerado.",
+    "fixMissing": "Adicione ao design os elementos ou as propriedades necessárias.",
+    "fixUnsupported": "Considere usar uma alternativa compatível ou simplificar o design.",
+    "fixDefault": "Verifique os elementos do design e garanta que eles sigam a estrutura recomendada para a conversão em código.",
+    "messages": {
+      "largeSelection": "Seleção grande ({{count}} nós). A prévia em HTML e a extração de cores foram desativadas para evitar problemas de memória.",
+      "absoluteChildren": "O frame \"{{frame}}\" tem filhos com posicionamento absoluto. Usando {{replacement}} em vez de {{original}}.",
+      "failedSvgOrPng": "Falha ao renderizar {{name}} como SVG ou PNG: {{error}}",
+      "unsupportedNode": "O nó {{nodeType}} não é suportado.",
+      "previewPlaceholders": "Preenchimentos de imagem usam placeholders de prévia. Baixe o pacote do projeto/código-fonte para incluir assets locais.",
+      "imagePlaceholders": "Preenchimentos de imagem são substituídos por placeholders.",
+      "imagePlaceholdersCompose": "Preenchimentos de imagem são substituídos por placeholders no Compose.",
+      "base64Png": "Algumas imagens foram exportadas como PNG em Base64.",
+      "vectorFlutter": "Nós vetoriais não são suportados no Flutter.",
+      "vectorSwiftUI": "Nós vetoriais não são suportados no SwiftUI.",
+      "vectorCompose": "Nós vetoriais não são totalmente suportados no Compose.",
+      "vectorReactNative": "Nós vetoriais não são suportados no React Native.",
+      "vectorUnsupported": "Vetores não são suportados.",
+      "reactNativeGradientFallback": "Gradientes são aproximados como cores sólidas no React Native.",
+      "reactNativeLinearOnly": "Apenas gradientes lineares são totalmente suportados no React Native; os demais usam fallback para cor sólida.",
+      "failedSvgIcon": "Falha ao renderizar o SVG do ícone: erro desconhecido na exportação de SVG.",
+      "blendModeTextColors": "O modo de mesclagem não é suportado nas cores do texto.",
+      "flutterNegativeSpacing": "O Flutter não suporta espaçamento negativo entre itens.",
+      "composeNegativeSpacing": "O Compose não suporta espaçamento negativo entre itens.",
+      "flutterDiamondGradients": "Gradientes em diamante não são suportados no Flutter.",
+      "nonUniformBordersInside": "Bordas não uniformes só são suportadas quando o alinhamento do traço está como inside. A borda será pintada para dentro."
+    }
+  },
+  "code": {
+    "title": "Código",
+    "frameworkOptions": "Opções de {{framework}}",
+    "stylingOptions": "Opções de estilo",
+    "actionsWithDownload": "Baixar projeto/código-fonte exporta o código gerado junto com as imagens e os vetores locais usados por ele. Copiar apenas copia o código exibido neste painel.",
+    "actionsCopyOnly": "Copiar apenas copia o código exibido neste painel.",
+    "showMore": "Mostrar mais",
+    "showLess": "Mostrar menos",
+    "showMoreHelp": "Mostrar mais código. Isso pode deixar o Figma lento ou travá-lo por alguns segundos."
+  },
+  "copy": {
+    "copy": "Copiar",
+    "copied": "Copiado!",
+    "clipboard": "Copiar para a área de transferência"
+  },
+  "download": {
+    "source": "Baixar código-fonte",
+    "project": "Baixar projeto",
+    "creating": "Criando projeto…",
+    "withAssets": "Baixar com recursos",
+    "projectAs": "Baixar projeto como",
+    "swiftSource": "Código SwiftUI"
+  },
+  "preview": {
+    "title": "Prévia",
+    "switchBackground": "Alterar o fundo da prévia para {{color}}. Útil para evitar texto preto sobre fundo preto.",
+    "black": "preto",
+    "white": "branco",
+    "desktop": "Visualização desktop",
+    "mobile": "Visualização móvel",
+    "precision": "Visualização precisa",
+    "precisionExact": "Visualização precisa (dimensões exatas)",
+    "minimize": "Minimizar prévia",
+    "maximize": "Maximizar prévia"
+  },
+  "settings": {
+    "collapse": "Recolher {{title}}",
+    "expand": "Expandir {{title}}",
+    "advanced": "Configurações avançadas"
+  },
+  "form": {
+    "applied": "Aplicado",
+    "done": "Concluir",
+    "preview": "Prévia",
+    "notApplied": "ainda não aplicado",
+    "applyHint": "Pressione Enter ou clique em Concluir para aplicar as alterações",
+    "noSpaces": "O valor não pode conter espaços",
+    "numbersOnly": "Apenas números são permitidos",
+    "validNumber": "Digite um número válido",
+    "minimum": "O valor mínimo é {{value}}",
+    "maximum": "O valor máximo é {{value}}",
+    "invalidJson": "Configuração JSON inválida: {{error}}"
+  },
+  "tailwindSettings": {
+    "customPrefix": "Prefixo personalizado de classe",
+    "customPrefixPlaceholder": "ex.: tw-",
+    "customPrefixHelp": "Adiciona um prefixo a todas as classes Tailwind geradas. Útil para evitar conflitos com o CSS existente. O padrão é vazio.",
+    "customPrefixDescription": "Adicione um prefixo personalizado a todas as classes Tailwind (ex.: \"tw-\")",
+    "baseFontSize": "Tamanho-base da fonte",
+    "baseFontSizeDescription": "Use este valor para calcular medidas em rem (padrão: 16px)",
+    "roundingThreshold": "Limite de arredondamento",
+    "roundingThresholdDescription": "Diferença máxima permitida ao arredondar valores (padrão: 15%)",
+    "baseFontFamily": "Família de fonte base",
+    "baseFontFamilyHelp": "Família de fonte que não será incluída nas classes geradas.",
+    "baseFontFamilyDescription": "Elementos com esta fonte não receberão a classe \"font-[<valor>]\"",
+    "fontConfig": "Configuração personalizada de fontes",
+    "fontConfigPlaceholder": "Sua configuração personalizada",
+    "fontConfigHelp": "Cole a configuração personalizada de famílias de fontes do Tailwind",
+    "fontConfigDescription": "Permite substituir o tratamento personalizado de fontes, por exemplo, \"font-comic\""
+  },
+  "preferences": {
+    "useTailwind4": {
+      "label": "Tailwind 4",
+      "description": "Ative os recursos e a sintaxe do Tailwind CSS 4."
+    },
+    "showLayerNames": {
+      "label": "Nomes das camadas",
+      "description": "Inclua os nomes das camadas do Figma nas classes."
+    },
+    "roundTailwindValues": {
+      "label": "Arredondar valores",
+      "description": "Arredonde valores arbitrários para o valor Tailwind mais próximo."
+    },
+    "roundTailwindColors": {
+      "label": "Arredondar cores",
+      "description": "Arredonde as cores do Figma para as cores Tailwind mais próximas."
+    },
+    "useColorVariables": {
+      "label": "Variáveis de cor",
+      "description": "Use variáveis de cor do Figma em vez dos valores de cor resolvidos."
+    },
+    "embedImages": {
+      "label": "Incorporar imagens",
+      "description": "Incorpore imagens diretamente no código gerado como dados Base64."
+    },
+    "embedVectors": {
+      "label": "Incorporar vetores",
+      "description": "Incorpore nós vetoriais como SVG em vez de usar marcadores de posição."
+    },
+    "mode": "Modo",
+    "options": {
+      "fullApp": "Aplicativo completo",
+      "stateless": "Widget",
+      "snippet": "Trecho",
+      "preview": "Prévia",
+      "struct": "Estrutura",
+      "composable": "Componente",
+      "screen": "Tela completa"
+    }
+  },
+  "about": {
+    "createdWith": "Criado com",
+    "by": "por Bernardo Ferrari",
+    "githubProfile": "Perfil no GitHub",
+    "twitterProfile": "Perfil no X",
+    "privacyTitle": "Política de privacidade",
+    "privacyText": "Este plugin é totalmente privado. Todos os dados do seu design são processados localmente no navegador e nunca saem do seu computador. Sem análises, coleta de dados ou rastreamento.",
+    "openSourceTitle": "Código aberto",
+    "openSourceText": "O Figma to Code é totalmente aberto. Contribuições, relatos de erros e sugestões de recursos são bem-vindos!",
+    "viewGithub": "Ver no GitHub",
+    "featuresTitle": "Recursos",
+    "featureConvert": "Converta designs do Figma para HTML, Tailwind, Flutter, SwiftUI e React Native",
+    "featureExtract": "Extraia cores e gradientes dos seus designs",
+    "featureResponsive": "Obtenha código responsivo compatível com o seu design",
+    "contactTitle": "Entre em contato",
+    "contactText": "Tem comentários, dúvidas ou precisa de ajuda? Abra uma issue no GitHub:",
+    "reportIssue": "Relatar um problema no GitHub",
+    "debugTitle": "Auxiliar de depuração",
+    "debugText": "Encontrou um problema? Ajude na depuração copiando o JSON dos elementos selecionados. Você pode anexá-lo ao relatar o problema.",
+    "copyJson": "Copiar JSON da seleção",
+    "oldVersion": "Usar a versão anterior do plugin",
+    "oldVersionText": "A nova versão é até 100 vezes mais rápida, mas ainda pode apresentar alguns problemas. Caso encontre algum, você pode voltar para a versão antiga (e, por favor, relate-o para que possa ser corrigido).",
+    "rights": "© {{year}} Bernardo Ferrari. Todos os direitos reservados."
+  }
+}

@@ -120,4 +120,11 @@ export const selectPreferenceOptions: SelectPreferenceOptions[] = [
     ],
     includedLanguages: ["Compose"],
   },
+  {
+    itemType: "select",
+    propertyName: "reactNativeGenerationMode",
+    label: "Mode",
+    options: [{ label: "Screen", value: "screen" }],
+    includedLanguages: ["ReactNative"],
+  },
 ];

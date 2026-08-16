@@ -7,6 +7,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./ui/collapsible";
+import { useI18n } from "../i18n";
 
 interface SettingsGroupProps {
   title: string;
@@ -28,6 +29,7 @@ const SettingsGroup: React.FC<SettingsGroupProps> = ({
   onPreferenceChanged,
   children,
 }) => {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(alwaysExpanded);
 
   const hasContent = settings.length > 0 || children;
@@ -51,7 +53,10 @@ const SettingsGroup: React.FC<SettingsGroupProps> = ({
           render={
             <button
               className="flex items-center justify-start gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left h-auto p-0"
-              aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`}
+              aria-label={t(
+                expanded ? "settings.collapse" : "settings.expand",
+                { title },
+              )}
             />
           }
         >
@@ -74,8 +79,16 @@ const SettingsGroup: React.FC<SettingsGroupProps> = ({
               {settings.map((preference) => (
                 <SelectableToggle
                   key={preference.propertyName}
-                  title={preference.label}
-                  description={preference.description}
+                  title={t(
+                    `preferences.${preference.propertyName}.label`,
+                    undefined,
+                    preference.label,
+                  )}
+                  description={t(
+                    `preferences.${preference.propertyName}.description`,
+                    undefined,
+                    preference.description,
+                  )}
                   isSelected={
                     typeof selectedSettings?.[preference.propertyName] ===
                     "boolean"

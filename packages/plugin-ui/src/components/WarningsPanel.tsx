@@ -9,6 +9,7 @@ import {
   Info,
 } from "lucide-react";
 import { Warning } from "types";
+import { useI18n } from "../i18n";
 
 interface WarningsPanelProps {
   warnings: Warning[];
@@ -27,7 +28,94 @@ const categorizeWarnings = (warnings: Warning[]) => {
   return { critical, standard };
 };
 
+const translateWarning = (
+  warning: string,
+  t: (
+    key: string,
+    variables?: Record<string, string | number>,
+    fallback?: string,
+  ) => string,
+) => {
+  const largeSelectionMatch = warning.match(
+    /^Large selection \((\d+) nodes\)\. HTML preview and colors are disabled to avoid memory issues\.$/,
+  );
+  if (largeSelectionMatch) {
+    return t("warnings.messages.largeSelection", {
+      count: Number(largeSelectionMatch[1]),
+    });
+  }
+
+  const absoluteChildrenMatch = warning.match(
+    /^Frame "(.+)" has absolute positioned children\. Using (.+) instead of (.+)\.$/,
+  );
+  if (absoluteChildrenMatch) {
+    return t("warnings.messages.absoluteChildren", {
+      frame: absoluteChildrenMatch[1],
+      replacement: absoluteChildrenMatch[2],
+      original: absoluteChildrenMatch[3],
+    });
+  }
+
+  const failedSvgOrPngMatch = warning.match(
+    /^Failed rendering (.+) as SVG or PNG: (.+)$/,
+  );
+  if (failedSvgOrPngMatch) {
+    return t("warnings.messages.failedSvgOrPng", {
+      name: failedSvgOrPngMatch[1],
+      error: failedSvgOrPngMatch[2],
+    });
+  }
+
+  const unsupportedNodeMatch = warning.match(
+    /^([A-Z_]+) node is not supported$/,
+  );
+  if (unsupportedNodeMatch) {
+    return t("warnings.messages.unsupportedNode", {
+      nodeType: unsupportedNodeMatch[1],
+    });
+  }
+
+  const exactMatches: Record<string, string> = {
+    "Image fills use preview placeholders; download the project to include local assets":
+      "warnings.messages.previewPlaceholders",
+    "Image fills are replaced with placeholders":
+      "warnings.messages.imagePlaceholders",
+    "Image fills are replaced with placeholders in Compose":
+      "warnings.messages.imagePlaceholdersCompose",
+    "Some images exported as Base64 PNG": "warnings.messages.base64Png",
+    "VectorNodes are not supported in Flutter":
+      "warnings.messages.vectorFlutter",
+    "VectorNodes are not supported in SwiftUI":
+      "warnings.messages.vectorSwiftUI",
+    "VectorNodes are not fully supported in Compose":
+      "warnings.messages.vectorCompose",
+    "Vector nodes are not supported in React Native":
+      "warnings.messages.vectorReactNative",
+    "Vector is not supported": "warnings.messages.vectorUnsupported",
+    "Gradients are approximated as flat colors in React Native":
+      "warnings.messages.reactNativeGradientFallback",
+    "Only linear gradients are fully supported in React Native; other gradients use a solid fallback":
+      "warnings.messages.reactNativeLinearOnly",
+    "Failed rendering SVG for Icon: Unknown SVG export error":
+      "warnings.messages.failedSvgIcon",
+    "BlendMode is not supported in Text colors":
+      "warnings.messages.blendModeTextColors",
+    "Flutter doesn't support negative itemSpacing":
+      "warnings.messages.flutterNegativeSpacing",
+    "Compose doesn't support negative itemSpacing":
+      "warnings.messages.composeNegativeSpacing",
+    "Diamond dradients are not supported in Flutter":
+      "warnings.messages.flutterDiamondGradients",
+    'Non-uniform borders are only supported with strokeAlign set to "inside". Will paint inside.':
+      "warnings.messages.nonUniformBordersInside",
+  };
+
+  const key = exactMatches[warning];
+  return key ? t(key, undefined, warning) : warning;
+};
+
 const WarningsPanel: React.FC<WarningsPanelProps> = ({ warnings }) => {
+  const { t } = useI18n();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "critical" | "standard">(
     "all",
@@ -58,11 +146,16 @@ const WarningsPanel: React.FC<WarningsPanelProps> = ({ warnings }) => {
           </span>
           <span className="flex items-center gap-2">
             <span className="font-medium text-amber-900 dark:text-amber-200 text-sm">
-              {warnings.length} {warnings.length === 1 ? "Warning" : "Warnings"}
+              {t(
+                warnings.length === 1
+                  ? "warnings.count_one"
+                  : "warnings.count_other",
+                { count: warnings.length },
+              )}
             </span>
             {critical.length > 0 && (
               <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-xs">
-                {critical.length} critical
+                {t("warnings.criticalCount", { count: critical.length })}
               </span>
             )}
           </span>
@@ -86,7 +179,7 @@ const WarningsPanel: React.FC<WarningsPanelProps> = ({ warnings }) => {
                 }`}
                 onClick={() => setActiveTab("all")}
               >
-                All ({warnings.length})
+                {t("warnings.all", { count: warnings.length })}
               </button>
               <button
                 className={`px-2 py-1 text-xs font-medium rounded transition-colors flex-1 flex items-center justify-center gap-1 ${
@@ -97,7 +190,9 @@ const WarningsPanel: React.FC<WarningsPanelProps> = ({ warnings }) => {
                 onClick={() => setActiveTab("critical")}
               >
                 <AlertOctagon size={12} />
-                <span>Critical ({critical.length})</span>
+                <span>
+                  {t("warnings.critical", { count: critical.length })}
+                </span>
               </button>
               <button
                 className={`px-2 py-1 text-xs font-medium rounded transition-colors flex-1 flex items-center justify-center gap-1 ${
@@ -108,7 +203,7 @@ const WarningsPanel: React.FC<WarningsPanelProps> = ({ warnings }) => {
                 onClick={() => setActiveTab("standard")}
               >
                 <Info size={12} />
-                <span>Other ({standard.length})</span>
+                <span>{t("warnings.other", { count: standard.length })}</span>
               </button>
             </div>
           )}
@@ -117,6 +212,8 @@ const WarningsPanel: React.FC<WarningsPanelProps> = ({ warnings }) => {
           <div className="space-y-1.5 max-h-[200px] overflow-y-auto pb-0.5">
             {displayedWarnings.map((message, index) => {
               const isCritical = critical.includes(message);
+              const warningText = message.toString();
+              const translatedWarning = translateWarning(warningText, t);
               return (
                 <div
                   key={index}
@@ -150,27 +247,29 @@ const WarningsPanel: React.FC<WarningsPanelProps> = ({ warnings }) => {
                       <p
                         className={`text-xs ${isCritical ? "text-red-700 dark:text-red-300" : "text-amber-700 dark:text-amber-300"}`}
                       >
-                        {message.toString()}
+                        {translatedWarning}
                       </p>
 
                       {/* Suggested fix - balanced size */}
                       {isCritical && (
                         <div className="mt-1 bg-white/70 dark:bg-black/20 rounded-sm py-1 px-2 text-neutral-600 dark:text-neutral-400 border-l border-red-300 dark:border-red-500 text-xs">
-                          <span className="font-medium">Tip: </span>
-                          {suggestFixForWarning(message.toString())}
+                          <span className="font-medium">
+                            {t("warnings.tip")}{" "}
+                          </span>
+                          {t(suggestFixKey(warningText))}
                         </div>
                       )}
                     </div>
 
                     {/* Action link - balanced size */}
-                    {shouldShowActionButtons(message.toString()) && (
+                    {shouldShowActionButtons(warningText) && (
                       <a
-                        href={getDocsLinkForWarning(message.toString())}
+                        href={getDocsLinkForWarning(warningText)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="shrink-0 flex items-center text-xs text-blue-600 dark:text-blue-400 hover:underline mt-0.5"
                       >
-                        <span>Info</span>
+                        <span>{t("warnings.info")}</span>
                         <ExternalLink size={10} className="ml-0.5" />
                       </a>
                     )}
@@ -184,10 +283,7 @@ const WarningsPanel: React.FC<WarningsPanelProps> = ({ warnings }) => {
           {displayedWarnings.length > 0 && (
             <div className="mt-2 py-1 px-1 text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-800/50 rounded-sm border-neutral-200 dark:border-neutral-700 flex items-center gap-1.5">
               {/* <Info size={10} className="shrink-0" /> */}
-              <span>
-                Addressing warnings can improve the quality of the generated
-                code.
-              </span>
+              <span>{t("warnings.footer")}</span>
             </div>
           )}
         </div>
@@ -197,14 +293,14 @@ const WarningsPanel: React.FC<WarningsPanelProps> = ({ warnings }) => {
 };
 
 // Helper functions (these would be expanded with actual logic in your implementation)
-const suggestFixForWarning = (warning: string): string => {
+const suggestFixKey = (warning: string): string => {
   if (warning.toLowerCase().includes("missing")) {
-    return "Add the required properties to your component or select a parent element that includes all necessary children.";
+    return "warnings.fixMissing";
   }
   if (warning.toLowerCase().includes("unsupported")) {
-    return "Consider using a different element type or simplifying the design for better conversion results.";
+    return "warnings.fixUnsupported";
   }
-  return "Check your design elements and ensure they follow the recommended structure for code conversion.";
+  return "warnings.fixDefault";
 };
 
 const shouldShowActionButtons = (warning: string): boolean => {

@@ -2,6 +2,23 @@ import { AltNode } from "types";
 import { curry } from "../common/curry";
 import { exportAsyncProxy } from "../common/exportAsyncProxy";
 import { addWarning } from "../common/commonConversionWarnings";
+import { imageBytesToDataUrl } from "../common/images";
+
+const getErrorMessage = (error: unknown): string => {
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message
+  ) {
+    return error.message;
+  }
+  const message = String(error ?? "");
+  return message && message !== "undefined"
+    ? message
+    : "Figma did not return SVG content";
+};
 
 export const overrideReadonlyProperty = curry(
   <T, K extends keyof T>(prop: K, value: any, obj: T): T =>
@@ -59,9 +76,25 @@ export const renderAndAttachSVG = async (node: any) => {
     }
 
     try {
-      const svg = (await exportAsyncProxy<string>(node, {
-        format: "SVG_STRING",
-      })) as string;
+      let svg = "";
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          svg = (await exportAsyncProxy<string>(node, {
+            format: "SVG_STRING",
+          })) as string;
+          if (!svg.trim().startsWith("<svg")) {
+            throw new Error("Figma returned invalid SVG content");
+          }
+          break;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      if (!svg) {
+        throw new Error(getErrorMessage(lastError));
+      }
 
       // Process the SVG to replace colors with variable references
       if (node.colorVariableMappings && node.colorVariableMappings.size > 0) {
@@ -114,9 +147,24 @@ export const renderAndAttachSVG = async (node: any) => {
         node.svg = svg;
       }
     } catch (error) {
-      addWarning(`Failed rendering SVG for ${node.name}`);
-      console.error(`Error rendering SVG for ${node.type}:${node.id}`);
-      console.error(error);
+      const svgError = getErrorMessage(error);
+      try {
+        const bytes = await exportAsyncProxy<Uint8Array>(node, {
+          format: "PNG",
+          constraint: { type: "SCALE", value: 2 },
+        });
+        node.svg = `<img src="${imageBytesToDataUrl(bytes)}" width="${Math.max(1, Math.round(node.width))}" height="${Math.max(1, Math.round(node.height))}" alt="" />`;
+        console.warn(
+          `SVG export failed for ${node.type}:${node.id}; using inline PNG fallback: ${svgError}`,
+        );
+      } catch (pngError) {
+        addWarning(
+          `Failed rendering ${node.name} as SVG or PNG: ${getErrorMessage(pngError)}`,
+        );
+        console.error(`Error rendering SVG for ${node.type}:${node.id}`);
+        console.error(error);
+        console.error(pngError);
+      }
     }
   }
   return node;

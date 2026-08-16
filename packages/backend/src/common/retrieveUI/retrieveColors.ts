@@ -79,6 +79,8 @@ const convertSolidColor = async (
     output.exportValue = tailwindColor(fill as any, true).exportValue;
   } else if (framework === "SwiftUI") {
     output.exportValue = swiftuiColor(fill.color, opacity);
+  } else if (framework === "ReactNative") {
+    output.exportValue = htmlColorFromFill(fill as any);
   }
 
   return output;
@@ -138,6 +140,9 @@ export const retrieveGenericLinearGradients = async (
             break;
           case "SwiftUI":
             exportValue = swiftuiGradient(fill);
+            break;
+          case "ReactNative":
+            exportValue = htmlGradientFromFills(fill);
             break;
         }
         colorStr.push({

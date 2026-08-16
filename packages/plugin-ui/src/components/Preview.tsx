@@ -3,6 +3,7 @@ import { HTMLPreview } from "types";
 import { Maximize2, Minimize2, MonitorSmartphone, Circle } from "lucide-react";
 import { cn, replaceExternalImagesWithCanvas } from "../lib/utils";
 import { Button } from "./ui/button";
+import { useI18n } from "../i18n";
 
 // Update the component props to receive state from parent
 const Preview: React.FC<{
@@ -16,6 +17,7 @@ const Preview: React.FC<{
   bgColor: "white" | "black";
   setBgColor: React.Dispatch<React.SetStateAction<"white" | "black">>;
 }> = (props) => {
+  const { t } = useI18n();
   const { htmlPreview, expanded, setExpanded, viewMode, bgColor, setBgColor } =
     props;
 
@@ -43,7 +45,7 @@ const Preview: React.FC<{
       <div className="flex justify-between items-center px-3 py-2 border-b border-border">
         <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           <MonitorSmartphone size={16} />
-          Preview
+          {t("preview.title")}
         </h3>
         <div className="flex items-center gap-1">
           {/* Background Color Toggle - Only show in desktop and mobile modes */}
@@ -53,8 +55,12 @@ const Preview: React.FC<{
             size="icon-sm"
             onClick={() => setBgColor(bgColor === "white" ? "black" : "white")}
             className="mr-1 rounded-sm text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-700"
-            aria-label={`Switch the preview to ${bgColor === "white" ? "black" : "white"} background.\nUseful to avoid black text on black background.`}
-            title={`Switch the preview to ${bgColor === "white" ? "black" : "white"} background.\nUseful to avoid black text on black background.`}
+            aria-label={t("preview.switchBackground", {
+              color: t(bgColor === "white" ? "preview.black" : "preview.white"),
+            })}
+            title={t("preview.switchBackground", {
+              color: t(bgColor === "white" ? "preview.black" : "preview.white"),
+            })}
           >
             <Circle size={14} fill={bgColor} className="stroke-current" />
           </Button>
@@ -105,8 +111,8 @@ const Preview: React.FC<{
             size="icon-sm"
             onClick={() => setExpanded(!expanded)}
             className="rounded-sm text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-700"
-            aria-label={expanded ? "Minimize preview" : "Maximize preview"}
-            title={expanded ? "Minimize preview" : "Maximize preview"}
+            aria-label={t(expanded ? "preview.minimize" : "preview.maximize")}
+            title={t(expanded ? "preview.minimize" : "preview.maximize")}
           >
             {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </Button>

@@ -14,6 +14,7 @@ import SettingsGroup from "./SettingsGroup";
 import FrameworkTabs from "./FrameworkTabs";
 import { TailwindSettings } from "./TailwindSettings";
 import DownloadMenu from "./DownloadMenu";
+import { useI18n } from "../i18n";
 
 interface CodePanelProps {
   code: string;
@@ -31,6 +32,7 @@ interface CodePanelProps {
 }
 
 const CodePanel = (props: CodePanelProps) => {
+  const { t } = useI18n();
   const [syntaxHovered, setSyntaxHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const initialLinesToShow = 25;
@@ -103,6 +105,7 @@ const CodePanel = (props: CodePanelProps) => {
   const canDownloadProject =
     selectedFramework === "Flutter" ||
     selectedFramework === "HTML" ||
+    selectedFramework === "ReactNative" ||
     selectedFramework === "SwiftUI" ||
     selectedFramework === "Tailwind";
 
@@ -153,7 +156,7 @@ const CodePanel = (props: CodePanelProps) => {
     <div className="w-full flex flex-col gap-2 mt-2">
       <div className="flex items-center justify-between w-full">
         <p className="text-lg font-medium text-center text-foreground rounded-lg">
-          Code
+          {t("code.title")}
         </p>
         {!isCodeEmpty && (
           <div className="flex items-center gap-1.5">
@@ -180,6 +183,14 @@ const CodePanel = (props: CodePanelProps) => {
       )}
 
       {!isCodeEmpty && (
+        <p className="text-xs leading-5 text-muted-foreground">
+          {onDownloadProject
+            ? t("code.actionsWithDownload")
+            : t("code.actionsCopyOnly")}
+        </p>
+      )}
+
+      {!isCodeEmpty && (
         <div className="flex flex-col p-3 bg-card border rounded-lg text-sm">
           {/* Essential settings always shown */}
           <SettingsGroup
@@ -194,14 +205,21 @@ const CodePanel = (props: CodePanelProps) => {
           {selectableSettingsFiltered.length > 0 && (
             <div className="mb-2 flex flex-col gap-2 last:mb-0">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                {selectedFramework} Options
+                {t("code.frameworkOptions", { framework: selectedFramework })}
               </p>
               {selectableSettingsFiltered.map((preference) => {
                 // Regular toggle buttons for other options
                 return (
                   <FrameworkTabs
                     key={preference.propertyName}
-                    options={preference.options}
+                    options={preference.options.map((option) => ({
+                      ...option,
+                      label: t(
+                        `preferences.options.${option.value}`,
+                        undefined,
+                        option.label,
+                      ),
+                    }))}
                     selectedValue={
                       (settings?.[preference.propertyName] ??
                         preference.options.find((option) => option.isDefault)
@@ -222,7 +240,7 @@ const CodePanel = (props: CodePanelProps) => {
             selectedFramework === "Tailwind") && (
             <div className={hasSettingsBeforeStyling ? "mt-2" : undefined}>
               <SettingsGroup
-                title="Styling Options"
+                title={t("code.stylingOptions")}
                 settings={stylingPreferences}
                 selectedSettings={settings}
                 onPreferenceChanged={onPreferenceChanged}
@@ -266,11 +284,13 @@ const CodePanel = (props: CodePanelProps) => {
                   ? "jsx"
                   : selectedFramework === "Flutter"
                     ? "dart"
-                    : selectedFramework === "SwiftUI"
-                      ? "swift"
-                      : selectedFramework === "Compose"
-                        ? "kotlin"
-                        : "html"
+                    : selectedFramework === "ReactNative"
+                      ? "jsx"
+                      : selectedFramework === "SwiftUI"
+                        ? "swift"
+                        : selectedFramework === "Compose"
+                          ? "kotlin"
+                          : "html"
               }
               style={theme}
               customStyle={{
@@ -291,10 +311,10 @@ const CodePanel = (props: CodePanelProps) => {
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
                   className="text-xs w-full flex justify-center py-3 text-blue-500 hover:text-blue-400 transition-colors"
-                  aria-label="Show more code. This could be slow or freeze Figma for a few seconds."
-                  title="Show more code. This could be slow or freeze Figma for a few seconds."
+                  aria-label={t("code.showMoreHelp")}
+                  title={t("code.showMoreHelp")}
                 >
-                  {isExpanded ? "Show Less" : "Show More"}
+                  {isExpanded ? t("code.showLess") : t("code.showMore")}
                 </button>
               </div>
             )}

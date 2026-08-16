@@ -4,15 +4,28 @@ import {
   flutterMain,
   tailwindMain,
   swiftuiMain,
+  reactNativeMain,
   htmlMain,
   extractProjectImageNodeIds,
   generateProjectZip,
+  injectReactNativeVectorHelpers,
   postSettingsChanged,
   replaceProjectImagePlaceholders,
+  replaceProjectVectorReferences,
 } from "backend";
 import { nodesToJSON } from "backend/src/altNodes/jsonNodeConversion";
 import { oldConvertNodesToAltNodes } from "backend/src/altNodes/oldAltConversion";
 import { exportNodeAsPNG } from "backend/src/common/images";
+import {
+  createImageAssetName,
+  createVectorAssetName,
+} from "backend/src/common/assetNames";
+import { isLikelyIcon } from "backend/src/altNodes/iconDetection";
+import type {
+  ProjectAsset,
+  ProjectImage,
+  ProjectVector,
+} from "backend/src/zipGenerator";
 import { retrieveGenericSolidUIColors } from "backend/src/common/retrieveUI/retrieveColors";
 import { flutterCodeGenTextStyles } from "backend/src/flutter/flutterMain";
 import { htmlCodeGenTextStyles } from "backend/src/html/htmlMain";
@@ -33,6 +46,7 @@ export const defaultPluginSettings: PluginSettings = {
   flutterGenerationMode: "snippet",
   swiftUIGenerationMode: "snippet",
   composeGenerationMode: "snippet",
+  reactNativeGenerationMode: "screen",
   roundTailwindValues: true,
   roundTailwindColors: true,
   useColorVariables: true,
@@ -145,18 +159,13 @@ const safeRun = async (settings: PluginSettings) => {
   }
 };
 
-type ExportedProjectImage = {
-  name: string;
-  bytes: Uint8Array;
-  nodeId: string;
-};
-
 const allowedFormatsByFramework: Record<
-  "Flutter" | "HTML" | "SwiftUI" | "Tailwind",
+  "Flutter" | "HTML" | "SwiftUI" | "Tailwind" | "ReactNative",
   DownloadProjectFormat[]
 > = {
   Flutter: ["flutter"],
   HTML: ["html", "nextjs", "vite"],
+  ReactNative: ["reactnative"],
   SwiftUI: ["swiftui"],
   Tailwind: ["html", "nextjs", "vite"],
 };
@@ -181,12 +190,6 @@ const getRootSelectionName = (selection: readonly SceneNode[]) => {
   );
 };
 
-const createImageName = (nodeId: string, nodeName: string) => {
-  const cleanName = toKebab(nodeName);
-  const suffix = nodeId.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "");
-  return `${cleanName || "image"}-${suffix}.png`;
-};
-
 const isImageNode = (node: SceneNode): boolean => {
   if ("fills" in node) {
     const fills = node.fills;
@@ -198,11 +201,73 @@ const isImageNode = (node: SceneNode): boolean => {
   return false;
 };
 
+const getImagePaints = (node: SceneNode): ImagePaint[] => {
+  if (!("fills" in node) || node.fills === figma.mixed) return [];
+  return Array.isArray(node.fills)
+    ? node.fills.filter((fill): fill is ImagePaint => fill.type === "IMAGE")
+    : [];
+};
+
+const sniffImageExtension = (bytes: Uint8Array): string => {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return "jpg";
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
+    return "gif";
+  }
+  if (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return "webp";
+  }
+  return "png";
+};
+
+const hasActiveImageFilters = (paint: ImagePaint) =>
+  !!paint.filters &&
+  Object.values(paint.filters).some(
+    (value) => typeof value === "number" && value !== 0,
+  );
+
+const exportOriginalImage = async (
+  node: SceneNode,
+): Promise<ProjectImage | null> => {
+  const paints = getImagePaints(node);
+  if (
+    paints.length !== 1 ||
+    !("fills" in node) ||
+    !Array.isArray(node.fills) ||
+    node.fills.length !== 1 ||
+    !["FILL", "FIT"].includes(paints[0].scaleMode) ||
+    hasActiveImageFilters(paints[0]) ||
+    !paints[0].imageHash
+  ) {
+    return null;
+  }
+
+  const image = figma.getImageByHash(paints[0].imageHash);
+  if (!image) return null;
+
+  const bytes = await image.getBytesAsync();
+  return {
+    bytes,
+    kind: "image",
+    name: createImageAssetName(paints[0].imageHash, sniffImageExtension(bytes)),
+    nodeId: node.id,
+    source: "original",
+  };
+};
+
 const exportProjectImages = async (
   selection: readonly SceneNode[],
   requiredNodeIds: ReadonlySet<string>,
-): Promise<ExportedProjectImage[]> => {
-  const images: ExportedProjectImage[] = [];
+  renderScale = 1,
+): Promise<ProjectImage[]> => {
+  const images: ProjectImage[] = [];
   const missingNodeIds = new Set(requiredNodeIds);
 
   const visit = async (node: SceneNode) => {
@@ -217,13 +282,24 @@ const exportProjectImages = async (
         );
       }
 
-      const hasChildren = "children" in node && node.children.length > 0;
-      const bytes = await exportNodeAsPNG(node, hasChildren);
-      images.push({
-        bytes,
-        name: createImageName(node.id, node.name),
-        nodeId: node.id,
-      });
+      let exportedImage: ProjectImage | null = null;
+      try {
+        exportedImage = await exportOriginalImage(node);
+      } catch (error) {
+        console.warn(`Original image export failed for ${node.id}`, error);
+      }
+
+      if (!exportedImage) {
+        const hasChildren = "children" in node && node.children.length > 0;
+        exportedImage = {
+          bytes: await exportNodeAsPNG(node, hasChildren, renderScale),
+          kind: "image",
+          name: createImageAssetName(node.id),
+          nodeId: node.id,
+          source: "rendered",
+        };
+      }
+      images.push(exportedImage);
       missingNodeIds.delete(node.id);
     }
 
@@ -247,6 +323,180 @@ const exportProjectImages = async (
   }
 
   return images;
+};
+
+const collectImageNodeIds = (selection: readonly SceneNode[]) => {
+  const nodeIds = new Set<string>();
+  const visit = (node: SceneNode) => {
+    if (node.visible === false) return;
+    if (isImageNode(node)) nodeIds.add(node.id);
+    if ("children" in node) node.children.forEach(visit);
+  };
+  selection.forEach(visit);
+  return nodeIds;
+};
+
+const exportProjectVectors = async (
+  selection: readonly SceneNode[],
+  useLegacyDetection: boolean,
+): Promise<ProjectVector[]> => {
+  const vectors: ProjectVector[] = [];
+  const legacyVectorTypes = new Set<NodeType>([
+    "BOOLEAN_OPERATION",
+    "POLYGON",
+    "STAR",
+    "VECTOR",
+  ]);
+  const isLegacyFlattenable = (node: SceneNode): boolean => {
+    if (legacyVectorTypes.has(node.type)) return true;
+    return (
+      "children" in node &&
+      node.children.length > 0 &&
+      node.children.every(isLegacyFlattenable)
+    );
+  };
+
+  const visit = async (node: SceneNode, parentFlattened = false) => {
+    if (node.visible === false) return;
+    const shouldFlatten =
+      !parentFlattened &&
+      (isLikelyIcon(node) || (useLegacyDetection && isLegacyFlattenable(node)));
+
+    if (shouldFlatten && "exportAsync" in node) {
+      let svgError: unknown;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const svg = await node.exportAsync({ format: "SVG_STRING" });
+          if (!svg.trim().startsWith("<svg")) {
+            throw new Error("Figma returned invalid SVG content");
+          }
+          vectors.push({
+            bytes: new TextEncoder().encode(svg),
+            format: "svg",
+            kind: "vector",
+            name: createVectorAssetName(node.id),
+            nodeId: node.id,
+          });
+          svgError = undefined;
+          break;
+        } catch (error) {
+          svgError = error;
+        }
+      }
+
+      if (svgError) {
+        const bytes = await node.exportAsync({
+          format: "PNG",
+          constraint: { type: "SCALE", value: 3 },
+        });
+        vectors.push({
+          bytes,
+          fallbackReason:
+            svgError instanceof Error ? svgError.message : String(svgError),
+          format: "png",
+          kind: "vector",
+          name: createVectorAssetName(node.id, "png"),
+          nodeId: node.id,
+        });
+      }
+    }
+
+    if (!shouldFlatten && "children" in node) {
+      for (const child of node.children) await visit(child, false);
+    }
+  };
+
+  for (const node of selection) await visit(node);
+  return vectors;
+};
+
+const getRequiredFlutterVectorAssetNames = (code: string) =>
+  new Set(
+    [...code.matchAll(/assets\/(?:[^/"']+\/)?vectors\/(vector-[^"']+\.svg)/g)]
+      .map((match) => match[1])
+      .filter(Boolean),
+  );
+
+const getVectorSvgAssetName = (vector: ProjectVector) =>
+  vector.name.replace(/\.png$/i, ".svg");
+
+const inferNodeIdFromVectorAssetName = (assetName: string) => {
+  const cleanId = assetName
+    .replace(/^vector-/i, "")
+    .replace(/\.(svg|png)$/i, "");
+  const parts = cleanId.split("-").filter(Boolean);
+  if (parts.length < 2) {
+    return null;
+  }
+
+  if (/^I\d+$/i.test(parts[0]) && parts.length >= 4) {
+    return `${parts[0]}:${parts[1]};${parts[2]}:${parts.slice(3).join("-")}`;
+  }
+
+  return `${parts[0]}:${parts.slice(1).join("-")}`;
+};
+
+const exportRequiredFlutterVectorAssets = async (
+  rawCode: string,
+  registeredVectors: ProjectVector[],
+): Promise<ProjectVector[]> => {
+  const requiredAssetNames = getRequiredFlutterVectorAssetNames(rawCode);
+  if (requiredAssetNames.size === 0) {
+    return registeredVectors;
+  }
+
+  const vectorsBySvgAssetName = new Map(
+    registeredVectors.map((vector) => [getVectorSvgAssetName(vector), vector]),
+  );
+  const resolvedVectors = [...registeredVectors];
+
+  for (const assetName of requiredAssetNames) {
+    if (vectorsBySvgAssetName.has(assetName)) {
+      continue;
+    }
+
+    const nodeId = inferNodeIdFromVectorAssetName(assetName);
+    const node = nodeId ? await figma.getNodeByIdAsync(nodeId) : null;
+    if (
+      !node ||
+      !("exportAsync" in node) ||
+      ("visible" in node && node.visible === false)
+    ) {
+      continue;
+    }
+
+    let vector: ProjectVector;
+    try {
+      const svg = await node.exportAsync({ format: "SVG_STRING" });
+      if (!svg.trim().startsWith("<svg")) {
+        throw new Error("Figma returned invalid SVG content");
+      }
+      vector = {
+        bytes: new TextEncoder().encode(svg),
+        format: "svg",
+        kind: "vector",
+        name: assetName,
+        nodeId: node.id,
+      };
+    } catch (error) {
+      vector = {
+        bytes: await node.exportAsync({
+          format: "PNG",
+          constraint: { type: "SCALE", value: 3 },
+        }),
+        fallbackReason: error instanceof Error ? error.message : String(error),
+        format: "png",
+        kind: "vector",
+        name: assetName.replace(/\.svg$/i, ".png"),
+        nodeId: node.id,
+      };
+    }
+
+    vectorsBySvgAssetName.set(assetName, vector);
+    resolvedVectors.push(vector);
+  }
+
+  return resolvedVectors;
 };
 
 const getConvertedSelectionForDownload = async (
@@ -294,7 +544,14 @@ const generateDownloadCode = async (
   if (pluginSettings.framework === "SwiftUI") {
     return swiftuiMain(convertedSelection, {
       ...settings,
-      swiftUIGenerationMode: "preview",
+      swiftUIGenerationMode: "struct",
+    });
+  }
+
+  if (pluginSettings.framework === "ReactNative") {
+    return reactNativeMain(convertedSelection, {
+      ...settings,
+      reactNativeGenerationMode: "screen",
     });
   }
 
@@ -318,7 +575,11 @@ const generateDownloadCode = async (
 };
 
 const downloadProject = async (format: DownloadProjectFormat) => {
-  if (!["flutter", "html", "nextjs", "swiftui", "vite"].includes(format)) {
+  if (
+    !["flutter", "html", "nextjs", "reactnative", "swiftui", "vite"].includes(
+      format,
+    )
+  ) {
     throw new Error(`Invalid download format: ${format}.`);
   }
 
@@ -336,31 +597,133 @@ const downloadProject = async (format: DownloadProjectFormat) => {
   if (selection.length === 0) {
     throw new Error("Please select at least one layer to export.");
   }
-
-  const rawCode = await generateDownloadCode(selection, format, pluginSettings);
-  const requiredImageNodeIds = extractProjectImageNodeIds(rawCode);
-  const images = await exportProjectImages(selection, requiredImageNodeIds);
-  const code = replaceProjectImagePlaceholders(rawCode, images, format);
   const rootName = getRootSelectionName(selection);
-  const rawAssetSize = images.reduce(
-    (sum, image) => sum + image.bytes.byteLength,
+
+  const registeredImages = await exportProjectImages(
+    selection,
+    collectImageNodeIds(selection),
+    format === "flutter" ? 2 : 1,
+  );
+  const registeredVectors =
+    format === "flutter" || format === "reactnative" || format === "swiftui"
+      ? await exportProjectVectors(
+          selection,
+          pluginSettings.useOldPluginVersion2025,
+        )
+      : [];
+  const rawCode = await generateDownloadCode(selection, format, pluginSettings);
+  const availableVectors =
+    format === "flutter"
+      ? await exportRequiredFlutterVectorAssets(rawCode, registeredVectors)
+      : registeredVectors;
+  const requiredImageNodeIds = extractProjectImageNodeIds(rawCode);
+  const images = registeredImages.filter((image) =>
+    requiredImageNodeIds.has(image.nodeId),
+  );
+  const vectors = availableVectors.filter((vector) => {
+    if (format === "flutter") {
+      return getRequiredFlutterVectorAssetNames(rawCode).has(
+        getVectorSvgAssetName(vector),
+      );
+    }
+    if (format === "reactnative") {
+      const assetName = createVectorAssetName(vector.nodeId).replace(
+        /\.svg$/i,
+        "",
+      );
+      return rawCode.includes(`assetName="${assetName}"`);
+    }
+    const assetName = createVectorAssetName(vector.nodeId).replace(
+      /\.svg$/i,
+      "",
+    );
+    return rawCode.includes(`Image("${assetName}")`);
+  });
+  const registeredVectorPaths = new Set(
+    vectors.map((vector) => getVectorSvgAssetName(vector)),
+  );
+  const missingVectorPaths = [...getRequiredFlutterVectorAssetNames(rawCode)]
+    .filter((assetName) => !registeredVectorPaths.has(assetName))
+    .map((assetName) => `assets/vectors/${assetName}`);
+  if (format === "flutter" && missingVectorPaths.length > 0) {
+    throw new Error(
+      `Could not export ${missingVectorPaths.length} vector asset${
+        missingVectorPaths.length === 1 ? "" : "s"
+      }: ${missingVectorPaths.join(", ")}`,
+    );
+  }
+  const nonFlutterMissingVectorPaths = new Set(
+    [...rawCode.matchAll(/assets\/vectors\/[^"']+\.svg/g)].map(
+      (match) => match[0],
+    ),
+  );
+  if (format !== "flutter" && nonFlutterMissingVectorPaths.size > 0) {
+    throw new Error(
+      `Could not export ${nonFlutterMissingVectorPaths.size} vector asset${
+        nonFlutterMissingVectorPaths.size === 1 ? "" : "s"
+      }: ${[...nonFlutterMissingVectorPaths].join(", ")}`,
+    );
+  }
+  if (format === "swiftui") {
+    const registeredSwiftAssets = new Set(
+      vectors.map((vector) =>
+        createVectorAssetName(vector.nodeId).replace(/\.svg$/i, ""),
+      ),
+    );
+    const requiredSwiftAssets = new Set(
+      [...rawCode.matchAll(/Image\("(vector-[^"]+)"\)/g)].map(
+        (match) => match[1],
+      ),
+    );
+    const missingSwiftAssets = [...requiredSwiftAssets].filter(
+      (name) => !registeredSwiftAssets.has(name),
+    );
+    if (missingSwiftAssets.length > 0) {
+      throw new Error(
+        `Could not export ${missingSwiftAssets.length} SwiftUI vector asset${
+          missingSwiftAssets.length === 1 ? "" : "s"
+        }: ${missingSwiftAssets.join(", ")}`,
+      );
+    }
+  }
+  const assets: ProjectAsset[] = [...images, ...vectors];
+  const imageResolvedCode = replaceProjectImagePlaceholders(
+    rawCode,
+    images,
+    format,
+    rootName,
+  );
+  const code = replaceProjectVectorReferences(
+    imageResolvedCode,
+    assets,
+    rootName,
+  );
+  const finalCode =
+    format === "reactnative"
+      ? injectReactNativeVectorHelpers(code, assets, rootName)
+      : code;
+  const uniqueAssetsByName = new Map(
+    assets.map((asset) => [`${asset.kind ?? "image"}:${asset.name}`, asset]),
+  );
+  const rawAssetSize = [...uniqueAssetsByName.values()].reduce(
+    (sum, asset) => sum + asset.bytes.byteLength,
     0,
   );
   const maxRawAssetSizeBytes = 25 * 1024 * 1024;
   if (rawAssetSize > maxRawAssetSizeBytes) {
     throw new Error(
-      `Images are too large (${Math.round(rawAssetSize / 1024 / 1024)}MB). Try selecting fewer images or smaller components.`,
+      `Assets are too large (${Math.round(rawAssetSize / 1024 / 1024)}MB). Try selecting fewer images or smaller components.`,
     );
   }
   const zipData = generateProjectZip(
-    code,
+    finalCode,
     pluginSettings.framework,
-    images,
+    assets,
     format,
     rootName,
   );
 
-  const maxMessageSizeBytes = 10 * 1024 * 1024;
+  const maxMessageSizeBytes = 30 * 1024 * 1024;
   if (zipData.byteLength > maxMessageSizeBytes) {
     throw new Error(
       `Project too large (${Math.round(zipData.byteLength / 1024 / 1024)}MB). Try selecting fewer images or smaller components.`,

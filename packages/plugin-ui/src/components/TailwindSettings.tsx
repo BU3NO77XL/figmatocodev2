@@ -1,5 +1,6 @@
 import { PluginSettings } from "types";
 import FormField from "./CustomPrefixInput"; // Still importing from the same file
+import { useI18n } from "../i18n";
 
 interface TailwindSettingsProps {
   settings: PluginSettings | null;
@@ -13,6 +14,7 @@ export const TailwindSettings: React.FC<TailwindSettingsProps> = ({
   settings,
   onPreferenceChanged,
 }) => {
+  const { t } = useI18n();
   if (!settings) return null;
 
   const handleCustomPrefixChange = (newValue: string) => {
@@ -48,7 +50,7 @@ export const TailwindSettings: React.FC<TailwindSettingsProps> = ({
   return (
     <div className="mt-2">
       <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-        Advanced Settings
+        {t("settings.advanced")}
       </p>
 
       {/* Advanced Settings Section */}
@@ -56,25 +58,25 @@ export const TailwindSettings: React.FC<TailwindSettingsProps> = ({
         {/* Class name prefix setting */}
         <div className="mb-3">
           <FormField
-            label="Custom Class Prefix"
+            label={t("tailwindSettings.customPrefix")}
             initialValue={settings.customTailwindPrefix || ""}
             onValueChange={(d) => {
               handleCustomPrefixChange(d as any);
             }}
-            placeholder="e.g., tw-"
-            helpText="Add a prefix to all generated Tailwind classes. Useful for avoiding conflicts with existing CSS. Default is empty."
+            placeholder={t("tailwindSettings.customPrefixPlaceholder")}
+            helpText={t("tailwindSettings.customPrefixHelp")}
             type="text"
             showPreview={true}
           />
           <p className="text-xs text-neutral-500 mt-1">
-            Add a custom prefix to all Tailwind classes (e.g. &quot;tw-&quot;)
+            {t("tailwindSettings.customPrefixDescription")}
           </p>
         </div>
 
         {/* Base font size setting */}
         <div className="mb-3">
           <FormField
-            label="Base Font Size"
+            label={t("tailwindSettings.baseFontSize")}
             initialValue={settings.baseFontSize || 16}
             onValueChange={(d) => {
               handleBaseFontSizeChange(d as any);
@@ -86,14 +88,14 @@ export const TailwindSettings: React.FC<TailwindSettingsProps> = ({
             max={100}
           />
           <p className="text-xs text-neutral-500 mt-1">
-            Use this value to calculate rem values (default: 16px)
+            {t("tailwindSettings.baseFontSizeDescription")}
           </p>
         </div>
 
         {/* Threshold percent setting */}
         <div className="mb-3">
           <FormField
-            label="Rounding Threshold"
+            label={t("tailwindSettings.roundingThreshold")}
             initialValue={settings.thresholdPercent || 15}
             onValueChange={(d) => {
               handleThresholdPercentChange(d as any);
@@ -105,30 +107,30 @@ export const TailwindSettings: React.FC<TailwindSettingsProps> = ({
             max={50}
           />
           <p className="text-xs text-neutral-500 mt-1">
-            Maximum allowed difference when rounding values (default: 15%)
+            {t("tailwindSettings.roundingThresholdDescription")}
           </p>
         </div>
 
         {/* Base font family setting */}
         <div className="mb-3">
           <FormField
-            label="Base Font Family"
+            label={t("tailwindSettings.baseFontFamily")}
             initialValue={settings.baseFontFamily || ""}
             onValueChange={(d) => {
               handleBaseFontFamilyChange(String(d));
             }}
             placeholder="sans-serif"
-            helpText="Font family that won't be included in generated classes."
+            helpText={t("tailwindSettings.baseFontFamilyHelp")}
             type="text"
           />
           <p className="text-xs text-neutral-500 mt-1">
-            {`Elements with this font won't have "font-[<value>]" class added`}
+            {t("tailwindSettings.baseFontFamilyDescription")}
           </p>
         </div>
         <div className="mb-3">
           <FormField
             type="json"
-            label="Font Family Custom Config"
+            label={t("tailwindSettings.fontConfig")}
             initialValue={
               settings.fontFamilyCustomConfig
                 ? JSON.stringify(settings.fontFamilyCustomConfig)
@@ -137,11 +139,11 @@ export const TailwindSettings: React.FC<TailwindSettingsProps> = ({
             onValueChange={(d) => {
               handleFontFamilyCustomConfigChange(String(d));
             }}
-            placeholder="Your custom config"
-            helpText="Paste your tailwind custom font family config"
+            placeholder={t("tailwindSettings.fontConfigPlaceholder")}
+            helpText={t("tailwindSettings.fontConfigHelp")}
           />
           <p className="text-xs text-neutral-500 mt-1">
-            {`This allow to override the custom font handling e.g. "font-comic"`}
+            {t("tailwindSettings.fontConfigDescription")}
             <pre>
               {`{
   "sans":["Arial","verdana"],

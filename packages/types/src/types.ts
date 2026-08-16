@@ -1,6 +1,12 @@
 import "@figma/plugin-typings";
 // Settings
-export type Framework = "Flutter" | "SwiftUI" | "HTML" | "Tailwind" | "Compose";
+export type Framework =
+  | "Flutter"
+  | "SwiftUI"
+  | "HTML"
+  | "Tailwind"
+  | "Compose"
+  | "ReactNative";
 export interface HTMLSettings {
   showLayerNames: boolean;
   embedImages: boolean;
@@ -31,13 +37,17 @@ export interface SwiftUISettings {
 export interface ComposeSettings {
   composeGenerationMode: "snippet" | "composable" | "screen";
 }
+export interface ReactNativeSettings {
+  reactNativeGenerationMode: "screen";
+}
 export interface PluginSettings
   extends
     HTMLSettings,
     TailwindSettings,
     FlutterSettings,
     SwiftUISettings,
-    ComposeSettings {
+    ComposeSettings,
+    ReactNativeSettings {
   framework: Framework;
   useOldPluginVersion2025: boolean;
   responsiveRoot: boolean;
@@ -83,6 +93,7 @@ export type DownloadProjectFormat =
   | "flutter"
   | "html"
   | "nextjs"
+  | "reactnative"
   | "swiftui"
   | "vite";
 export type DownloadProjectMessage = Message & {
@@ -243,7 +254,10 @@ export interface LocalCodegenPreferenceOptions extends PreferenceOptions {
   itemType: "individual_select";
   propertyName: Exclude<
     keyof PluginSettings,
-    "framework" | "flutterGenerationMode" | "swiftUIGenerationMode"
+    | "framework"
+    | "flutterGenerationMode"
+    | "swiftUIGenerationMode"
+    | "reactNativeGenerationMode"
   >;
   description: string;
   value?: boolean;

@@ -1,0 +1,198 @@
+{
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "portuguese": "Português"
+  },
+  "navigation": { "about": "About" },
+  "emptyState": {
+    "title": "Nothing selected",
+    "description": "Select a layer to get started"
+  },
+  "loading": {
+    "title": "Generating code...",
+    "description": "Images and complex layers take longer to process"
+  },
+  "colors": {
+    "title": "Color Palette",
+    "count_one": "{{count}} color",
+    "count_other": "{{count}} colors"
+  },
+  "gradients": {
+    "title": "Gradients",
+    "count_one": "{{count}} gradient",
+    "count_other": "{{count}} gradients",
+    "copy": "Copy gradient {{index}}: {{value}}"
+  },
+  "warnings": {
+    "count_one": "{{count}} Warning",
+    "count_other": "{{count}} Warnings",
+    "criticalCount": "{{count}} critical",
+    "all": "All ({{count}})",
+    "critical": "Critical ({{count}})",
+    "other": "Other ({{count}})",
+    "tip": "Tip:",
+    "info": "Info",
+    "footer": "Addressing warnings can improve the quality of the generated code.",
+    "fixMissing": "Add the required elements or properties to your design.",
+    "fixUnsupported": "Consider using a supported alternative or simplify the design.",
+    "fixDefault": "Check your design elements and ensure they follow the recommended structure for code conversion.",
+    "messages": {
+      "largeSelection": "Large selection ({{count}} nodes). HTML preview and color extraction were disabled to avoid memory issues.",
+      "absoluteChildren": "Frame \"{{frame}}\" has absolutely positioned children. Using {{replacement}} instead of {{original}}.",
+      "failedSvgOrPng": "Failed to render {{name}} as SVG or PNG: {{error}}",
+      "unsupportedNode": "{{nodeType}} node is not supported.",
+      "previewPlaceholders": "Image fills use preview placeholders. Download the project/source package to include local assets.",
+      "imagePlaceholders": "Image fills are replaced with placeholders.",
+      "imagePlaceholdersCompose": "Image fills are replaced with placeholders in Compose.",
+      "base64Png": "Some images were exported as Base64 PNG.",
+      "vectorFlutter": "Vector nodes are not supported in Flutter.",
+      "vectorSwiftUI": "Vector nodes are not supported in SwiftUI.",
+      "vectorCompose": "Vector nodes are not fully supported in Compose.",
+      "vectorReactNative": "Vector nodes are not supported in React Native.",
+      "vectorUnsupported": "Vector is not supported.",
+      "reactNativeGradientFallback": "Gradients are approximated as flat colors in React Native.",
+      "reactNativeLinearOnly": "Only linear gradients are fully supported in React Native; other gradients fall back to a solid color.",
+      "failedSvgIcon": "Failed to render SVG for Icon: unknown SVG export error.",
+      "blendModeTextColors": "Blend mode is not supported in text colors.",
+      "flutterNegativeSpacing": "Flutter does not support negative item spacing.",
+      "composeNegativeSpacing": "Compose does not support negative item spacing.",
+      "flutterDiamondGradients": "Diamond gradients are not supported in Flutter.",
+      "nonUniformBordersInside": "Non-uniform borders are only supported when stroke alignment is set to inside. The border will be painted inside."
+    }
+  },
+  "code": {
+    "title": "Code",
+    "frameworkOptions": "{{framework}} Options",
+    "stylingOptions": "Styling Options",
+    "actionsWithDownload": "Download project/source exports the generated source code together with local image and vector assets used by it. Copy only copies the code currently shown in this panel.",
+    "actionsCopyOnly": "Copy only copies the code currently shown in this panel.",
+    "showMore": "Show More",
+    "showLess": "Show Less",
+    "showMoreHelp": "Show more code. This could be slow or freeze Figma for a few seconds."
+  },
+  "copy": {
+    "copy": "Copy",
+    "copied": "Copied!",
+    "clipboard": "Copy to clipboard"
+  },
+  "download": {
+    "source": "Download source",
+    "project": "Download project",
+    "creating": "Creating project…",
+    "withAssets": "Download with assets",
+    "projectAs": "Download project as",
+    "swiftSource": "SwiftUI Source"
+  },
+  "preview": {
+    "title": "Preview",
+    "switchBackground": "Switch the preview to {{color}} background. Useful to avoid black text on black background.",
+    "black": "black",
+    "white": "white",
+    "desktop": "Desktop view",
+    "mobile": "Mobile view",
+    "precision": "Precision view",
+    "precisionExact": "Precision view (exact dimensions)",
+    "minimize": "Minimize preview",
+    "maximize": "Maximize preview"
+  },
+  "settings": {
+    "collapse": "Collapse {{title}}",
+    "expand": "Expand {{title}}",
+    "advanced": "Advanced Settings"
+  },
+  "form": {
+    "applied": "Applied",
+    "done": "Done",
+    "preview": "Preview",
+    "notApplied": "not applied yet",
+    "applyHint": "Press Enter or click Done to apply changes",
+    "noSpaces": "Input cannot contain spaces",
+    "numbersOnly": "Only numbers are allowed",
+    "validNumber": "Please enter a valid number",
+    "minimum": "Minimum value is {{value}}",
+    "maximum": "Maximum value is {{value}}",
+    "invalidJson": "Invalid JSON configuration: {{error}}"
+  },
+  "tailwindSettings": {
+    "customPrefix": "Custom Class Prefix",
+    "customPrefixPlaceholder": "e.g., tw-",
+    "customPrefixHelp": "Add a prefix to all generated Tailwind classes. Useful for avoiding conflicts with existing CSS. Default is empty.",
+    "customPrefixDescription": "Add a custom prefix to all Tailwind classes (e.g. \"tw-\")",
+    "baseFontSize": "Base Font Size",
+    "baseFontSizeDescription": "Use this value to calculate rem values (default: 16px)",
+    "roundingThreshold": "Rounding Threshold",
+    "roundingThresholdDescription": "Maximum allowed difference when rounding values (default: 15%)",
+    "baseFontFamily": "Base Font Family",
+    "baseFontFamilyHelp": "Font family that won't be included in generated classes.",
+    "baseFontFamilyDescription": "Elements with this font won't have a \"font-[<value>]\" class added",
+    "fontConfig": "Font Family Custom Config",
+    "fontConfigPlaceholder": "Your custom config",
+    "fontConfigHelp": "Paste your Tailwind custom font family config",
+    "fontConfigDescription": "This allows you to override custom font handling, e.g. \"font-comic\""
+  },
+  "preferences": {
+    "useTailwind4": {
+      "label": "Tailwind 4",
+      "description": "Enable Tailwind CSS version 4 features and syntax."
+    },
+    "showLayerNames": {
+      "label": "Layer names",
+      "description": "Include Figma layer names in classes."
+    },
+    "roundTailwindValues": {
+      "label": "Round values",
+      "description": "Round arbitrary values to the nearest Tailwind value."
+    },
+    "roundTailwindColors": {
+      "label": "Round colors",
+      "description": "Round Figma color values to nearest Tailwind colors."
+    },
+    "useColorVariables": {
+      "label": "Color Variables",
+      "description": "Use Figma color variables instead of resolved color values."
+    },
+    "embedImages": {
+      "label": "Embed Images",
+      "description": "Embed images directly in the generated code as Base64 data."
+    },
+    "embedVectors": {
+      "label": "Embed Vectors",
+      "description": "Embed vector nodes as SVG instead of using placeholders."
+    },
+    "mode": "Mode",
+    "options": {
+      "fullApp": "Full App",
+      "stateless": "Widget",
+      "snippet": "Snippet",
+      "preview": "Preview",
+      "struct": "Struct",
+      "composable": "Composable",
+      "screen": "Full Screen"
+    }
+  },
+  "about": {
+    "createdWith": "Created with",
+    "by": "by Bernardo Ferrari",
+    "githubProfile": "GitHub Profile",
+    "twitterProfile": "Twitter Profile",
+    "privacyTitle": "Privacy Policy",
+    "privacyText": "This plugin is completely private. All of your design data is processed locally in your browser and never leaves your computer. No analytics, no data collection, no tracking.",
+    "openSourceTitle": "Open Source",
+    "openSourceText": "Figma to Code is completely open-source. Contributions, bug reports, and feature requests are welcome!",
+    "viewGithub": "View on GitHub",
+    "featuresTitle": "Features",
+    "featureConvert": "Convert Figma designs to HTML, Tailwind, Flutter, SwiftUI, and React Native",
+    "featureExtract": "Extract colors and gradients from your designs",
+    "featureResponsive": "Get responsive code that matches your design",
+    "contactTitle": "Get in Touch",
+    "contactText": "Have feedback, questions, or need help? Open a GitHub issue:",
+    "reportIssue": "Report an issue on GitHub",
+    "debugTitle": "Debug Helper",
+    "debugText": "Having an issue? Help me debug by copying the JSON of your selected elements. This can be attached when reporting issues.",
+    "copyJson": "Copy Selection JSON",
+    "oldVersion": "Use previous plugin version",
+    "oldVersionText": "The new version is up to 100x faster, but might still cause some issues. If you encounter problems, you can switch to the old version (and please report issues so they can be fixed).",
+    "rights": "© {{year}} Bernardo Ferrari. All rights reserved."
+  }
+}

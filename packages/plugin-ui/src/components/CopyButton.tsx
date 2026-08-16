@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Copy, Check } from "lucide-react";
 import copy from "copy-to-clipboard";
 import { cn } from "../lib/utils";
+import { useI18n } from "../i18n";
 import { Button } from "./ui/button";
 
 interface CopyButtonProps {
@@ -23,6 +24,7 @@ export function CopyButton({
   onMouseEnter,
   onMouseLeave,
 }: CopyButtonProps) {
+  const { t } = useI18n();
   const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
@@ -52,7 +54,8 @@ export function CopyButton({
         "bg-neutral-100 text-neutral-800 shadow-sm ring-1 ring-neutral-200 hover:bg-neutral-200 hover:text-neutral-950 dark:bg-neutral-800/90 dark:text-neutral-200 dark:ring-white/10 dark:hover:bg-neutral-600 dark:hover:text-white dark:hover:ring-white/20",
         className,
       )}
-      aria-label={isCopied ? "Copied!" : "Copy to clipboard"}
+      aria-label={isCopied ? t("copy.copied") : t("copy.clipboard")}
+      title={isCopied ? t("copy.copied") : t("copy.clipboard")}
     >
       <span className={cn("relative h-5 w-5 shrink-0")} aria-hidden="true">
         <span
@@ -77,7 +80,9 @@ export function CopyButton({
         </span>
       </span>
 
-      {showLabel && <span className="inline-flex text-left">{"Copy"}</span>}
+      {showLabel && (
+        <span className="inline-flex text-left">{t("copy.copy")}</span>
+      )}
     </Button>
   );
 }

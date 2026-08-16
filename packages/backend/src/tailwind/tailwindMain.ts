@@ -285,7 +285,6 @@ export const tailwindContainer = (
   const topFill = retrieveTopFill(node.fills);
 
   if (topFill?.type === "IMAGE") {
-    addWarning("Image fills are replaced with placeholders");
     const imageURL = getPlaceholderImage(
       node.width,
       node.height,

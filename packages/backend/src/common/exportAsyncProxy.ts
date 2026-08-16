@@ -21,26 +21,22 @@ export const exportAsyncProxy = async <
     await new Promise((resolve) => setTimeout(resolve, 30));
   }
 
-  const figmaNode = (await figma.getNodeByIdAsync(node.id)) as ExportMixin;
-  // console.log("getting figma id for", figmaNode);
+  try {
+    const figmaNode = await figma.getNodeByIdAsync(node.id);
+    if (!figmaNode || !("exportAsync" in figmaNode)) {
+      throw new TypeError(
+        `Node ${node.type}:${node.id} was not found or cannot be exported.`,
+      );
+    }
 
-  if (figmaNode.exportAsync === undefined) {
-    // console.log(node);
-    throw new TypeError(
-      "Something went wrong. This node doesn't have an exportAsync() function. Maybe check the type before calling this function.",
-    );
+    let result;
+    if (settings.format === "SVG_STRING") {
+      result = await figmaNode.exportAsync(settings as ExportSettingsSVGString);
+    } else {
+      result = await figmaNode.exportAsync(settings as ExportSettings);
+    }
+    return result as T;
+  } finally {
+    isRunning = false;
   }
-
-  // The following is necessary for typescript to not lose its mind.
-  let result;
-  if (settings.format === "SVG_STRING") {
-    result = await figmaNode.exportAsync(settings as ExportSettingsSVGString);
-    // } else if (settings.format === "JSON_REST_V1") {
-    //   result = await node.exportAsync(settings as ExportSettingsREST);
-  } else {
-    result = await figmaNode.exportAsync(settings as ExportSettings);
-  }
-
-  isRunning = false;
-  return result as T;
 };

@@ -5,6 +5,7 @@ import {
 import {
   addWarning,
   clearWarnings,
+  withWarningScope,
   warnings,
 } from "./common/commonConversionWarnings";
 import {
@@ -130,7 +131,9 @@ export const run = async (settings: PluginSettings) => {
 
   if (!skipHeavyUI) {
     const generatePreviewStart = Date.now();
-    htmlPreview = await generateHTMLPreview(convertedSelection, settings);
+    htmlPreview = await withWarningScope("preview", () =>
+      generateHTMLPreview(convertedSelection, settings),
+    );
     console.log(
       `[benchmark] generateHTMLPreview: ${Date.now() - generatePreviewStart}ms`,
     );

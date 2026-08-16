@@ -5,9 +5,26 @@ export interface ProjectImage {
   name: string;
   bytes: Uint8Array;
   nodeId: string;
+  kind?: "image";
+  source?: "original" | "rendered";
 }
 
+export interface ProjectVector {
+  name: string;
+  bytes: Uint8Array;
+  nodeId: string;
+  kind: "vector";
+  format: "svg" | "png";
+  fallbackReason?: string;
+}
+
+export type ProjectAsset = ProjectImage | ProjectVector;
+
 const IMAGE_PLACEHOLDER_PATTERN = /__FIGMA_IMAGE_(.*?)__/g;
+const isVectorAsset = (asset: ProjectAsset): asset is ProjectVector =>
+  asset.kind === "vector";
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const GENERATED_PROJECT_ENGINES = {
   node: ">=24",
@@ -39,6 +56,35 @@ const toPackageName = (rootName: string) =>
     .replace(/(^-|-$)/g, "") || "figma-export";
 const toDartPackageName = (rootName: string) =>
   toPackageName(rootName).replace(/-/g, "_");
+const toReactComponentName = (rootName: string) =>
+  (rootName || "FigmaExport")
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("") || "FigmaExport";
+const toDartFileName = (rootName: string) =>
+  toDartPackageName(rootName || "figma_export");
+const getFlutterAssetBasePath = (rootName: string) =>
+  `assets/${toPackageName(rootName)}/`;
+const getFlutterImageDirectory = (rootName: string) =>
+  `${getFlutterAssetBasePath(rootName)}images/`;
+const getFlutterVectorDirectory = (rootName: string) =>
+  `${getFlutterAssetBasePath(rootName)}vectors/`;
+const getReactNativeAssetDirectory = (rootName: string) =>
+  `assets/${toPackageName(rootName)}/images/`;
+const getReactNativeVectorDirectory = (rootName: string) =>
+  `assets/${toPackageName(rootName)}/vectors/`;
+const getReactNativeComponentDirectory = () => "src/components/";
+
+const splitFlutterEntrypoint = (code: string) => {
+  const entrypointPattern =
+    /void main\(\)\s*\{\s*runApp\(const FigmaToCodeApp\(\)\);\s*\}\s*/m;
+  if (!entrypointPattern.test(code)) {
+    return null;
+  }
+
+  return code.replace(entrypointPattern, "").trimStart();
+};
 
 const encodeText = (text: string): Uint8Array => {
   if (typeof TextEncoder !== "undefined") {
@@ -58,12 +104,25 @@ const writeJson = (value: unknown) =>
 
 const isTailwindProject = (framework: string) => framework === "Tailwind";
 
+const getImageCodePath = (
+  image: ProjectImage,
+  format: DownloadProjectFormat,
+  rootName = "figma-export",
+): string => {
+  if (format === "reactnative") {
+    return `../${getReactNativeAssetDirectory(rootName)}${image.name}`;
+  }
+
+  return getImagePath(image, format, rootName);
+};
+
 const getImagePath = (
   image: ProjectImage,
   format: DownloadProjectFormat,
+  rootName = "figma-export",
 ): string => {
   if (format === "flutter") {
-    return `assets/images/${image.name}`;
+    return `${getFlutterImageDirectory(rootName)}${image.name}`;
   }
   if (format === "swiftui") {
     return removeExtension(image.name);
@@ -86,6 +145,7 @@ export const replaceProjectImagePlaceholders = (
   code: string,
   images: ProjectImage[],
   format: DownloadProjectFormat,
+  rootName = "figma-export",
 ): string => {
   const imagesByNodeId = new Map(images.map((image) => [image.nodeId, image]));
   const resolveImage = (encodedNodeId: string): ProjectImage => {
@@ -102,14 +162,14 @@ export const replaceProjectImagePlaceholders = (
     replacedCode = replacedCode.replace(
       /NetworkImage\("__FIGMA_IMAGE_(.*?)__"\)/g,
       (_match, encodedNodeId: string) =>
-        `AssetImage("${getImagePath(resolveImage(encodedNodeId), format)}")`,
+        `AssetImage("${getImageCodePath(resolveImage(encodedNodeId), format, rootName)}")`,
     );
   }
 
   replacedCode = replacedCode.replace(
     IMAGE_PLACEHOLDER_PATTERN,
     (_match, encodedNodeId: string) =>
-      getImagePath(resolveImage(encodedNodeId), format),
+      getImageCodePath(resolveImage(encodedNodeId), format, rootName),
   );
 
   if (replacedCode.includes("__FIGMA_IMAGE_")) {
@@ -119,10 +179,296 @@ export const replaceProjectImagePlaceholders = (
   return replacedCode;
 };
 
+export const replaceProjectVectorReferences = (
+  code: string,
+  assets: ProjectAsset[],
+  rootName = "figma-export",
+): string => {
+  let replacedCode = code;
+  const vectorDirectory = getFlutterVectorDirectory(rootName);
+
+  for (const asset of assets) {
+    if (!isVectorAsset(asset)) continue;
+
+    const svgName = asset.name.replace(/\.(png|svg)$/i, ".svg");
+    const svgPath = `${vectorDirectory}${svgName}`;
+    const legacySvgPath = `assets/vectors/${svgName}`;
+    const svgPathPattern = `(?:${escapeRegExp(svgPath)}|${escapeRegExp(
+      legacySvgPath,
+    )})`;
+
+    if (asset.format === "svg") {
+      replacedCode = replacedCode.replace(
+        new RegExp(`"${svgPathPattern}"`, "g"),
+        `"${svgPath}"`,
+      );
+      continue;
+    }
+
+    const pngPath = `${vectorDirectory}${asset.name}`;
+    replacedCode = replacedCode.replace(
+      new RegExp(`SvgPicture\\.asset\\((\\s*)"${svgPathPattern}"`, "g"),
+      (_match, whitespace: string) => `Image.asset(${whitespace}"${pngPath}"`,
+    );
+  }
+
+  return replacedCode;
+};
+
+const escapeTemplateLiteral = (value: string) =>
+  value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+
+export const injectReactNativeVectorHelpers = (
+  code: string,
+  assets: ProjectAsset[],
+  rootName = "figma-export",
+) => {
+  const vectors = assets.filter(isVectorAsset);
+  const xmlMapEntries = vectors
+    .filter((vector) => vector.format === "svg")
+    .map(
+      (vector) =>
+        `"${removeExtension(vector.name)}": \`${escapeTemplateLiteral(
+          new TextDecoder().decode(vector.bytes),
+        )}\``,
+    );
+  const fallbackMapEntries = vectors
+    .filter((vector) => vector.format === "png")
+    .map(
+      (vector) =>
+        `"${removeExtension(vector.name)}": require("../${getReactNativeVectorDirectory(
+          rootName,
+        )}${vector.name}")`,
+    );
+
+  return code
+    .replace(
+      "__FIGMA_VECTOR_XML__",
+      xmlMapEntries.length > 0 ? `{ ${xmlMapEntries.join(", ")} }` : "{}",
+    )
+    .replace(
+      "__FIGMA_VECTOR_FALLBACKS__",
+      fallbackMapEntries.length > 0
+        ? `{ ${fallbackMapEntries.join(", ")} }`
+        : "{}",
+    );
+};
+
+const getBalancedBlockBounds = (
+  source: string,
+  startIndex: number,
+  openChar: string,
+  closeChar: string,
+) => {
+  let depth = 0;
+  let started = false;
+  for (let index = startIndex; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === openChar) {
+      depth += 1;
+      started = true;
+    } else if (char === closeChar && started) {
+      depth -= 1;
+      if (depth === 0) {
+        return { start: startIndex, end: index + 1 };
+      }
+    }
+  }
+
+  throw new Error("Failed to parse generated React Native source block.");
+};
+
+const findStylesBlock = (source: string) => {
+  const start = (() => {
+    const exported = source.indexOf(
+      "export const styles = StyleSheet.create({",
+    );
+    if (exported >= 0) return exported;
+    return source.indexOf("const styles = StyleSheet.create({");
+  })();
+  if (start === -1) {
+    return null;
+  }
+
+  const braceStart = source.indexOf("{", start);
+  const balanced = getBalancedBlockBounds(source, braceStart, "{", "}");
+  let end = balanced.end;
+  while (end < source.length && /\s/.test(source[end])) end += 1;
+  if (source.slice(end, end + 2) === ");") {
+    end += 2;
+  }
+
+  return {
+    start,
+    end,
+    code: source.slice(start, end),
+  };
+};
+
+const findDefaultComponentBlock = (source: string, componentName: string) => {
+  const explicitToken = `export default function ${componentName}()`;
+  const explicitStart = source.indexOf(explicitToken);
+  const start =
+    explicitStart >= 0
+      ? explicitStart
+      : source.search(/export default function\s+[A-Z][A-Za-z0-9_]*\(\)/);
+  if (start === -1) {
+    throw new Error(`Missing React Native screen component ${componentName}.`);
+  }
+  const braceStart = source.indexOf("{", start);
+  const balanced = getBalancedBlockBounds(source, braceStart, "{", "}");
+  return {
+    start,
+    end: balanced.end,
+    code: source
+      .slice(start, balanced.end)
+      .replace(
+        /export default function\s+[A-Z][A-Za-z0-9_]*\(\)/,
+        `export default function ${componentName}()`,
+      ),
+  };
+};
+
+const findZeroArgFunctionBlocks = (source: string) => {
+  const blocks: Array<{
+    name: string;
+    start: number;
+    end: number;
+    code: string;
+  }> = [];
+  const pattern = /function\s+([A-Z][A-Za-z0-9_]*)\(\)\s*\{/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source))) {
+    const name = match[1];
+    const start = match.index;
+    const braceStart = source.indexOf("{", start);
+    const balanced = getBalancedBlockBounds(source, braceStart, "{", "}");
+    blocks.push({
+      name,
+      start,
+      end: balanced.end,
+      code: source.slice(start, balanced.end),
+    });
+  }
+  return blocks;
+};
+
+const buildReactNativeImports = (
+  code: string,
+  generatedImportPath: string,
+  componentImports: string[] = [],
+) => {
+  const reactNativeSymbols = [
+    "Image",
+    "ScrollView",
+    "StyleSheet",
+    "Text",
+    "View",
+  ].filter((symbol) => {
+    if (symbol === "StyleSheet") return code.includes("StyleSheet.");
+    return code.includes(`<${symbol}`) || code.includes(`${symbol} `);
+  });
+
+  const imports = ['import React from "react";'];
+  if (reactNativeSymbols.length > 0) {
+    imports.push(
+      `import { ${reactNativeSymbols.sort().join(", ")} } from "react-native";`,
+    );
+  }
+  if (code.includes("LinearGradient")) {
+    imports.push('import { LinearGradient } from "expo-linear-gradient";');
+  }
+  if (code.includes("BlurView")) {
+    imports.push('import { BlurView } from "expo-blur";');
+  }
+
+  const generatedSymbols = ["styles"];
+  if (code.includes("FigmaVector")) {
+    generatedSymbols.push("FigmaVector");
+  }
+  imports.push(
+    `import { ${generatedSymbols.join(", ")} } from "${generatedImportPath}";`,
+  );
+
+  for (const componentImport of componentImports) {
+    imports.push(componentImport);
+  }
+
+  return `${imports.join("\n")}\n\n`;
+};
+
+const splitReactNativeGeneratedSource = (
+  source: string,
+  componentName: string,
+) => {
+  const stylesBlock = findStylesBlock(source);
+  const screenBlock = findDefaultComponentBlock(source, componentName);
+  const allFunctionBlocks = findZeroArgFunctionBlocks(
+    source.slice(0, screenBlock.start),
+  );
+
+  const extractedComponentBlocks = allFunctionBlocks.filter(
+    (block) => block.name !== "FigmaVector",
+  );
+  const helperStartCandidates = [
+    source.indexOf("const FIGMA_VECTOR_XML"),
+    source.indexOf("export function FigmaVector("),
+    source.indexOf("function FigmaVector("),
+  ].filter((index) => index >= 0);
+  const helperStart =
+    helperStartCandidates.length > 0
+      ? Math.min(...helperStartCandidates)
+      : (stylesBlock?.start ?? screenBlock.start);
+  const helperCode = source
+    .slice(helperStart, stylesBlock?.start ?? screenBlock.start)
+    .trim();
+  const normalizedHelperCode = helperCode.replace(
+    /(^|\n)function FigmaVector\(/,
+    "$1export function FigmaVector(",
+  );
+  const normalizedStylesCode = stylesBlock
+    ? stylesBlock.code.replace(
+        /^const styles = StyleSheet\.create\(/,
+        "export const styles = StyleSheet.create(",
+      )
+    : "export const styles = StyleSheet.create({});";
+
+  const generatedModule = `${buildReactNativeImports(
+    `${stylesBlock?.code ?? normalizedStylesCode}\n${helperCode}`,
+    "./generated",
+  ).replace(
+    `import { styles${helperCode.includes("FigmaVector") ? ", FigmaVector" : ""} } from "./generated";\n\n`,
+    "",
+  )}${normalizedHelperCode ? `${normalizedHelperCode}\n\n` : ""}${normalizedStylesCode}\n`;
+
+  const componentImports = extractedComponentBlocks.map(
+    (block) => `import ${block.name} from "./components/${block.name}";`,
+  );
+  const screenCode = `${buildReactNativeImports(
+    screenBlock.code,
+    "./generated",
+    componentImports,
+  )}${screenBlock.code}\n`;
+
+  const componentFiles = extractedComponentBlocks.map((block) => ({
+    fileName: `${getReactNativeComponentDirectory()}${block.name}.tsx`,
+    content: `${buildReactNativeImports(block.code, "../generated")}export default ${block.code.replace(
+      /^function\s+/,
+      "function ",
+    )}\n`,
+  }));
+
+  return {
+    generatedModule,
+    screenCode,
+    componentFiles,
+  };
+};
+
 export function generateProjectZip(
   code: string,
   framework: string,
-  images: ProjectImage[],
+  assets: ProjectAsset[],
   format: DownloadProjectFormat,
   rootName = "figma-export",
 ): Uint8Array {
@@ -130,8 +476,18 @@ export function generateProjectZip(
   const usesTailwind = isTailwindProject(framework);
   const rootDir = rootName || "figma-export";
   const packageName = toPackageName(rootDir);
+  const dartFileName = toDartFileName(rootDir);
+  const reactComponentName = toReactComponentName(rootDir);
+  const images = assets.filter((asset) => !isVectorAsset(asset));
+  const vectors = assets.filter(isVectorAsset);
 
   if (format === "flutter") {
+    const usesFlutterSvg = vectors.length > 0;
+    const flutterAssetDirectories = [
+      images.length > 0 ? `    - ${getFlutterImageDirectory(rootDir)}` : "",
+      vectors.length > 0 ? `    - ${getFlutterVectorDirectory(rootDir)}` : "",
+    ].filter(Boolean);
+    const flutterAppSource = splitFlutterEntrypoint(code);
     files["pubspec.yaml"] = encodeText(`name: ${toDartPackageName(rootDir)}
 description: Generated from Figma
 publish_to: "none"
@@ -143,6 +499,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+${usesFlutterSvg ? "  flutter_svg: ^2.2.4\n" : ""}
 
 dev_dependencies:
   flutter_test:
@@ -150,11 +507,21 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/images/
+${
+  flutterAssetDirectories.length > 0
+    ? `  assets:\n${flutterAssetDirectories.join("\n")}\n`
+    : ""
+}
 `);
 
-    files["lib/main.dart"] = encodeText(code);
+    files["lib/main.dart"] = encodeText(
+      flutterAppSource
+        ? `import 'package:flutter/material.dart';\nimport './${dartFileName}.dart';\n\nvoid main() {\n  runApp(const FigmaToCodeApp());\n}\n`
+        : code,
+    );
+    if (flutterAppSource) {
+      files[`lib/${dartFileName}.dart`] = encodeText(flutterAppSource);
+    }
     files["README.md"] = encodeText(`# ${rootDir}
 
 Flutter source generated by Figma to Code.
@@ -171,7 +538,7 @@ flutter pub get
 flutter run
 \`\`\`
 
-The generated UI starts in \`lib/main.dart\`. Exported images are stored in \`assets/images/\` and are already declared in \`pubspec.yaml\`.
+The project entry point is \`lib/main.dart\`, and the generated screen source is in \`lib/${dartFileName}.dart\`. Exported images are stored in \`${getFlutterImageDirectory(rootDir)}\`, vectors are stored in \`${getFlutterVectorDirectory(rootDir)}\`, and both are declared in \`pubspec.yaml\` when used. Asset provenance and fallback details are recorded in \`asset-manifest.json\`.
 
 ## Before shipping
 
@@ -184,6 +551,7 @@ Review responsive behavior, semantics, navigation, state management, and platfor
 build/
 `);
   } else if (format === "swiftui") {
+    const swiftScreenFile = `${reactComponentName}.swift`;
     files[`${rootDir}/Assets.xcassets/Contents.json`] = writeJson({
       info: {
         author: "xcode",
@@ -203,14 +571,23 @@ SwiftUI source generated by Figma to Code.
 
 1. Create a new iOS app project using the SwiftUI interface.
 2. Replace the generated \`ContentView.swift\` with this export's \`ContentView.swift\`.
-3. Copy the image sets from \`Assets.xcassets\` into your app's asset catalog.
-4. Build and run the app from Xcode.
+3. Keep the generated screen implementation in \`${swiftScreenFile}\`.
+4. Copy the image sets from \`Assets.xcassets\` into your app's asset catalog.
+5. Build and run the app from Xcode.
 
 ## Before shipping
 
 Review previews, accessibility labels, dynamic type, navigation, app state, and device-size behavior. The ZIP intentionally omits an \`.xcodeproj\` because Xcode project metadata is toolchain-specific and should be owned by your app.
 `);
-    files[`${rootDir}/ContentView.swift`] = encodeText(code);
+    files[`${rootDir}/ContentView.swift`] = encodeText(`import SwiftUI
+
+struct ContentView: View {
+  var body: some View {
+    ${reactComponentName}()
+  }
+}
+`);
+    files[`${rootDir}/${swiftScreenFile}`] = encodeText(code);
   } else if (format === "html") {
     files[`${rootDir}/index.html`] = encodeText(`<!doctype html>
 <html lang="en">
@@ -262,6 +639,7 @@ Exported images are in \`images/\`.${
 Review document semantics, keyboard behavior, responsive breakpoints, and image alternative text. The export reproduces the selected visual structure but cannot infer your product's behavior or content meaning.
 `);
   } else if (format === "nextjs") {
+    const nextScreenFile = `${reactComponentName}.tsx`;
     files["package.json"] = writeJson({
       name: packageName,
       private: true,
@@ -378,7 +756,17 @@ export default function RootLayout({
     const mainAttributes = usesTailwind
       ? ' className="container mx-auto p-4"'
       : "";
-    files["app/page.tsx"] = encodeText(`export default function Page() {
+    files["app/page.tsx"] =
+      encodeText(`import ${reactComponentName} from "./${reactComponentName}";
+
+export default function Page() {
+  return (
+    <${reactComponentName} />
+  );
+}
+`);
+    files[`app/${nextScreenFile}`] =
+      encodeText(`export default function ${reactComponentName}() {
   return (
     <main${mainAttributes}>
       ${code}
@@ -403,7 +791,7 @@ pnpm install
 pnpm dev
 \`\`\`
 
-Open <http://localhost:3000>. The generated UI is in \`app/page.tsx\`, global styles are in \`app/globals.css\`, and exported images are in \`public/images/\`.
+Open <http://localhost:3000>. The generated entry page is in \`app/page.tsx\`, the generated screen is in \`app/${nextScreenFile}\`, global styles are in \`app/globals.css\`, and exported images are in \`public/images/\`.
 
 The included \`pnpm-workspace.yaml\` permits only Next.js's \`sharp\` dependency to run its install script.
 
@@ -426,7 +814,8 @@ out/
 .env*
 !.env.example
 `);
-  } else {
+  } else if (format === "vite") {
+    const viteScreenFile = `${reactComponentName}.tsx`;
     files["package.json"] = writeJson({
       name: packageName,
       private: true,
@@ -488,7 +877,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     const mainAttributes = usesTailwind
       ? ' className="container mx-auto p-4"'
       : "";
-    files["src/App.tsx"] = encodeText(`export default function App() {
+    files["src/App.tsx"] =
+      encodeText(`import ${reactComponentName} from "./${reactComponentName}";
+
+export default function App() {
+  return <${reactComponentName} />;
+}
+`);
+    files[`src/${viteScreenFile}`] =
+      encodeText(`export default function ${reactComponentName}() {
   return (
     <main${mainAttributes}>
       ${code}
@@ -556,7 +953,7 @@ pnpm install
 pnpm dev
 \`\`\`
 
-Open the URL printed by Vite. The generated UI is in \`src/App.tsx\`${
+Open the URL printed by Vite. The generated entry app is in \`src/App.tsx\`, the generated screen is in \`src/${viteScreenFile}\`${
         usesTailwind ? ", Tailwind CSS is loaded from `src/index.css`," : ""
       } and exported images are in \`public/images/\`.
 
@@ -578,11 +975,104 @@ dist/
 .env*
 !.env.example
 `);
+  } else {
+    const rnScreenFile = `${reactComponentName}.tsx`;
+    const reactNativeSource = splitReactNativeGeneratedSource(
+      code,
+      reactComponentName,
+    );
+    files["package.json"] = writeJson({
+      name: packageName,
+      private: true,
+      version: "0.0.1",
+      scripts: {
+        start: "expo start",
+        android: "expo start --android",
+        ios: "expo start --ios",
+        web: "expo start --web",
+      },
+      dependencies: {
+        expo: "^55.0.0",
+        "expo-blur": "~15.0.7",
+        "expo-linear-gradient": "~16.0.0",
+        react: GENERATED_PROJECT_VERSIONS.react,
+        "react-dom": GENERATED_PROJECT_VERSIONS.reactDom,
+        "react-native": "0.82.0",
+        "react-native-svg": "^16.0.0",
+        "react-native-web": "^0.21.0",
+      },
+      devDependencies: {
+        "@expo/metro-runtime": "~6.1.0",
+        "@types/react": GENERATED_PROJECT_VERSIONS.typesReact,
+        "@typescript/native": GENERATED_PROJECT_VERSIONS.typescriptNative,
+        typescript: GENERATED_PROJECT_VERSIONS.typescript,
+      },
+    });
+    files["app.json"] = writeJson({
+      expo: {
+        name: reactComponentName,
+        slug: packageName,
+        version: "1.0.0",
+        orientation: "portrait",
+      },
+    });
+    files["babel.config.js"] = encodeText(`module.exports = function(api) {
+  api.cache(true);
+  return {
+    presets: ["babel-preset-expo"],
+  };
+};
+`);
+    files["tsconfig.json"] = writeJson({
+      extends: "expo/tsconfig.base",
+      compilerOptions: {
+        strict: true,
+      },
+    });
+    files["App.tsx"] =
+      encodeText(`import ${reactComponentName} from "./src/${reactComponentName}";
+
+export default function App() {
+  return <${reactComponentName} />;
+}
+`);
+    files["src/generated.tsx"] = encodeText(reactNativeSource.generatedModule);
+    files[`src/${rnScreenFile}`] = encodeText(reactNativeSource.screenCode);
+    for (const componentFile of reactNativeSource.componentFiles) {
+      files[componentFile.fileName] = encodeText(componentFile.content);
+    }
+    files["README.md"] = encodeText(`# ${rootDir}
+
+Expo React Native project generated by Figma to Code.
+
+## Requirements
+
+- Node.js >=24
+- pnpm ^11
+- Expo Go or Android/iOS simulator
+
+## Run the project
+
+\`\`\`sh
+pnpm install
+pnpm start
+\`\`\`
+
+The generated entry app is in \`App.tsx\`, the generated screen is in \`src/${rnScreenFile}\`, shared React Native helpers and styles are in \`src/generated.tsx\`, extracted UI components are in \`${getReactNativeComponentDirectory()}\`, exported images are in \`${getReactNativeAssetDirectory(rootDir)}\`, and exported vector fallbacks are in \`${getReactNativeVectorDirectory(rootDir)}\`.
+
+## Before shipping
+
+Review navigation, touch targets, dynamic sizing, accessibility, and platform behavior. This export is a visual baseline for React Native, not a full production app.
+`);
+    files[".gitignore"] = encodeText(`node_modules/
+.expo/
+dist/
+`);
   }
 
   for (const image of images) {
     if (format === "flutter") {
-      files[`assets/images/${image.name}`] = image.bytes;
+      files[`${getFlutterImageDirectory(rootDir)}${image.name}`] = image.bytes;
     } else if (format === "swiftui") {
       const assetName = removeExtension(image.name);
       files[`${rootDir}/Assets.xcassets/${assetName}.imageset/${image.name}`] =
@@ -611,10 +1101,77 @@ dist/
         });
     } else if (format === "html") {
       files[`${rootDir}/images/${image.name}`] = image.bytes;
+    } else if (format === "reactnative") {
+      files[`${getReactNativeAssetDirectory(rootDir)}${image.name}`] =
+        image.bytes;
     } else {
       files[`public/images/${image.name}`] = image.bytes;
     }
   }
+
+  if (format === "flutter") {
+    for (const vector of vectors) {
+      files[`${getFlutterVectorDirectory(rootDir)}${vector.name}`] =
+        vector.bytes;
+    }
+  } else if (format === "reactnative") {
+    for (const vector of vectors) {
+      files[`${getReactNativeVectorDirectory(rootDir)}${vector.name}`] =
+        vector.bytes;
+    }
+  } else if (format === "swiftui") {
+    for (const vector of vectors) {
+      const assetName = removeExtension(vector.name);
+      const imageSetPath = `${rootDir}/Assets.xcassets/${assetName}.imageset`;
+      files[`${imageSetPath}/${vector.name}`] = vector.bytes;
+      files[`${imageSetPath}/Contents.json`] = writeJson({
+        images: [
+          {
+            filename: vector.name,
+            idiom: "universal",
+            scale: "1x",
+          },
+        ],
+        info: {
+          author: "xcode",
+          version: 1,
+        },
+        ...(vector.format === "svg"
+          ? { properties: { "preserves-vector-representation": true } }
+          : {}),
+      });
+    }
+  }
+
+  const manifestPath =
+    format === "html" || format === "swiftui"
+      ? `${rootDir}/asset-manifest.json`
+      : "asset-manifest.json";
+  files[manifestPath] = writeJson({
+    version: 1,
+    assets: assets.map((asset) => ({
+      byteLength: asset.bytes.byteLength,
+      fallbackReason: isVectorAsset(asset) ? asset.fallbackReason : undefined,
+      format: isVectorAsset(asset) ? asset.format : asset.name.split(".").pop(),
+      kind: isVectorAsset(asset) ? "vector" : "image",
+      name: asset.name,
+      nodeId: asset.nodeId,
+      path: isVectorAsset(asset)
+        ? format === "swiftui"
+          ? `${rootDir}/Assets.xcassets/${removeExtension(asset.name)}.imageset/${asset.name}`
+          : format === "reactnative"
+            ? `${getReactNativeVectorDirectory(rootDir)}${asset.name}`
+            : `${getFlutterVectorDirectory(rootDir)}${asset.name}`
+        : format === "reactnative"
+          ? `${getReactNativeAssetDirectory(rootDir)}${asset.name}`
+          : getImagePath(asset, format, rootDir),
+      source: isVectorAsset(asset)
+        ? asset.format === "svg"
+          ? "figma-svg"
+          : "rasterized-vector"
+        : asset.source,
+    })),
+  });
 
   try {
     return zipSync(files, { level: 6 });

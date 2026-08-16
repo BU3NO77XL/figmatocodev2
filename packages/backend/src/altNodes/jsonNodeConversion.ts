@@ -481,7 +481,12 @@ const processNodePair = async (
   }
 
   // Add canBeFlattened property
-  if (settings.embedVectors && !parentNode?.canBeFlattened) {
+  if (
+    (settings.embedVectors ||
+      settings.framework === "Flutter" ||
+      settings.framework === "SwiftUI") &&
+    !parentNode?.canBeFlattened
+  ) {
     const isIcon = isLikelyIcon(jsonNode as any);
     (jsonNode as any).canBeFlattened = isIcon;
 

@@ -2,7 +2,6 @@ import {
   stringToClassName,
   generateWidgetCode,
 } from "../common/numToAutoFixed";
-import { retrieveTopFill } from "../common/retrieveFill";
 import { FlutterDefaultBuilder } from "./flutterDefaultBuilder";
 import { FlutterTextBuilder } from "./flutterTextBuilder";
 import { indentString } from "../common/indentString";
@@ -16,12 +15,22 @@ import {
 import { PluginSettings } from "types";
 import { addWarning } from "../common/commonConversionWarnings";
 import { getVisibleNodes } from "../common/nodeVisibility";
+import { getFlutterVectorAssetPath } from "../common/assetNames";
 
 let localSettings: PluginSettings;
 let previousExecutionCache: string[];
 
-const getFullAppTemplate = (name: string, injectCode: string): string =>
-  `import 'package:flutter/material.dart';
+const getFullAppTemplate = (name: string, injectCode: string): string => {
+  const imports = [
+    "import 'package:flutter/material.dart';",
+    injectCode.includes("SvgPicture.asset")
+      ? "import 'package:flutter_svg/flutter_svg.dart';"
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return `${imports}
 
 void main() {
   runApp(const FigmaToCodeApp());
@@ -52,6 +61,30 @@ class ${name} extends StatelessWidget {
     return ${indentString(injectCode, 4).trimStart()};
   }
 }`;
+};
+
+const FLUTTER_RESERVED_WIDGET_NAMES = new Set([
+  "Align",
+  "Column",
+  "Container",
+  "Icon",
+  "Image",
+  "MaterialApp",
+  "Padding",
+  "Row",
+  "Scaffold",
+  "Stack",
+  "Text",
+  "Widget",
+  "Wrap",
+]);
+
+const getRootWidgetName = (nodeName: string) => {
+  const className = stringToClassName(nodeName) || "FigmaSelection";
+  return FLUTTER_RESERVED_WIDGET_NAMES.has(className)
+    ? `Figma${className}`
+    : className;
+};
 
 const getStatelessTemplate = (name: string, injectCode: string): string =>
   `class ${name} extends StatelessWidget {
@@ -76,12 +109,12 @@ export const flutterMain = (
       if (!result.startsWith("Column")) {
         result = generateWidgetCode("Column", { children: [result] });
       }
-      return getStatelessTemplate(stringToClassName(sceneNode[0].name), result);
+      return getStatelessTemplate(getRootWidgetName(sceneNode[0].name), result);
     case "fullApp":
       if (!result.startsWith("Column")) {
         result = generateWidgetCode("Column", { children: [result] });
       }
-      return getFullAppTemplate(stringToClassName(sceneNode[0].name), result);
+      return getFullAppTemplate(getRootWidgetName(sceneNode[0].name), result);
   }
 
   return result;
@@ -96,6 +129,11 @@ const flutterWidgetGenerator = (
   const visibleSceneNode = getVisibleNodes(sceneNode);
 
   visibleSceneNode.forEach((node) => {
+    if ((node as any).canBeFlattened) {
+      comp.push(flutterVectorAsset(node));
+      return;
+    }
+
     switch ((node as any).type) {
       case "RECTANGLE":
       case "ELLIPSE":
@@ -121,7 +159,8 @@ const flutterWidgetGenerator = (
         comp.push(flutterText(node));
         break;
       case "VECTOR":
-        addWarning("VectorNodes are not supported in Flutter");
+      case "BOOLEAN_OPERATION":
+        comp.push(flutterVectorAsset(node));
         break;
       case "SLICE":
       default:
@@ -131,6 +170,17 @@ const flutterWidgetGenerator = (
 
   return comp.join(",\n");
 };
+
+const flutterVectorAsset = (node: SceneNode): string =>
+  generateWidgetCode(
+    "SvgPicture.asset",
+    {
+      width: node.width,
+      height: node.height,
+      fit: "BoxFit.contain",
+    },
+    [`"${getFlutterVectorAssetPath(node.id)}"`],
+  );
 
 const flutterGroup = (node: GroupNode): string => {
   const widget = flutterWidgetGenerator(node.children);
@@ -144,10 +194,6 @@ const flutterGroup = (node: GroupNode): string => {
 
 const flutterContainer = (node: SceneNode, child: string): string => {
   let propChild = "";
-
-  if ("fills" in node && retrieveTopFill(node.fills)?.type === "IMAGE") {
-    addWarning("Image fills are replaced with placeholders");
-  }
 
   if (child.length > 0) {
     propChild = child;

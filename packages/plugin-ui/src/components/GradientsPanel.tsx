@@ -1,5 +1,6 @@
 import React from "react";
 import { useState } from "react";
+import { useI18n } from "../i18n";
 
 const GradientsPanel = (props: {
   gradients: {
@@ -8,6 +9,7 @@ const GradientsPanel = (props: {
   }[];
   onColorClick: (color: string) => void;
 }) => {
+  const { t } = useI18n();
   const [isPressed, setIsPressed] = useState(-1);
 
   const handleButtonClick = (value: string, idx: number) => {
@@ -22,11 +24,15 @@ const GradientsPanel = (props: {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100 flex items-center gap-2">
             {/* <div className="w-4 h-4 rounded-full bg-linear-to-r from-blue-500 via-purple-500 to-pink-500"></div> */}
-            Gradients
+            {t("gradients.title")}
           </h2>
           <span className="text-xs bg-muted dark:bg-muted px-2 py-1 rounded-xl text-muted-foreground">
-            {props.gradients.length} gradient
-            {props.gradients.length > 1 ? "s" : ""}
+            {t(
+              props.gradients.length === 1
+                ? "gradients.count_one"
+                : "gradients.count_other",
+              { count: props.gradients.length },
+            )}
           </span>
         </div>
       </div>
@@ -41,7 +47,10 @@ const GradientsPanel = (props: {
                 : "ring-0"
             }`}
             style={{ background: gradient.cssPreview }}
-            aria-label={`Copy gradient ${idx + 1}: ${gradient.exportValue}`}
+            aria-label={t("gradients.copy", {
+              index: idx + 1,
+              value: gradient.exportValue,
+            })}
             onClick={() => {
               handleButtonClick(gradient.exportValue, idx);
             }}

@@ -1,6 +1,5 @@
 import { AltNode, ExportableNode } from "types";
 import { btoa } from "js-base64";
-import { addWarning } from "./commonConversionWarnings";
 import { exportAsyncProxy } from "./exportAsyncProxy";
 
 export const PLACEHOLDER_IMAGE_DOMAIN = "https://placehold.co";
@@ -37,7 +36,7 @@ export const nodeHasImageFill = (node: MinimalFillsMixin): boolean =>
 export const nodeHasMultipleFills = (node: MinimalFillsMixin) =>
   Array.isArray(node.fills) && node.fills.length > 1;
 
-const imageBytesToBase64 = (bytes: Uint8Array): string => {
+export const imageBytesToDataUrl = (bytes: Uint8Array): string => {
   // Convert Uint8Array to binary string
   const binaryString = bytes.reduce((data, byte) => {
     return data + String.fromCharCode(byte);
@@ -95,10 +94,8 @@ export const exportNodeAsBase64PNG = async <T extends ExportableNode>(
     exportAsyncProxy(n, exportSettings),
   );
 
-  addWarning("Some images exported as Base64 PNG");
-
   // Encode binary string to base64
-  const base64 = imageBytesToBase64(bytes);
+  const base64 = imageBytesToDataUrl(bytes);
   // Save the value so it's only calculated once.
   node.base64 = base64;
   return base64;
@@ -107,11 +104,12 @@ export const exportNodeAsBase64PNG = async <T extends ExportableNode>(
 export const exportNodeAsPNG = async (
   node: SceneNode & ExportMixin,
   excludeChildren: boolean,
+  scale = 1,
 ): Promise<Uint8Array> => {
   return exportWithHiddenChildren(node, excludeChildren, () =>
     node.exportAsync({
       format: "PNG",
-      constraint: { type: "SCALE", value: 1 },
+      constraint: { type: "SCALE", value: scale },
     }),
   );
 };

@@ -38,13 +38,14 @@ The generator is deterministic and runs inside Figma's plugin sandbox. It does n
 | Flutter      | Full app, stateless widget, or snippet                      |
 | SwiftUI      | Preview, `View` struct, or snippet                          |
 
-The plugin can also package generated code and local image assets into downloadable starters:
+The plugin can also package generated code and local assets into downloadable starters:
 
 - Web: Vite, Next.js, or static HTML
-- Flutter: source, `pubspec.yaml`, assets, and setup instructions
+- Flutter: source, `pubspec.yaml`, image assets, SVG vector assets, automatic PNG vector fallbacks, and setup instructions
 - SwiftUI: source, asset catalog, and setup instructions
 
 These exports are deliberately small and dependency-light. They are starting points, not generated production applications.
+Every project download includes an `asset-manifest.json` with the originating Figma node, output path, format, byte size, source strategy, and any vector fallback reason.
 
 ## What you can tune
 
@@ -93,7 +94,8 @@ This claim is intentionally narrow: Figma itself is a connected product and hand
 - Mixed flow and absolute positioning
 - Typography, fills, borders, corner radii, and many effects
 - Color variables and several gradient types
-- Images and local asset export
+- Original image extraction when safe, rendered image fallbacks for crops and filters, and deduplication by Figma image hash
+- Flutter and SwiftUI SVG assets with a high-resolution PNG fallback when Figma cannot render a valid SVG
 - Responsive visual scaffolds across web and native targets
 
 ## Deliberate limitations

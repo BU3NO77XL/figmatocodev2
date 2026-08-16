@@ -2,6 +2,7 @@ import { PluginSettings } from "types";
 import { composeMain } from "../../compose/composeMain";
 import { flutterMain } from "../../flutter/flutterMain";
 import { htmlMain } from "../../html/htmlMain";
+import { reactNativeMain } from "../../reactnative/reactNativeMain";
 import { swiftuiMain } from "../../swiftui/swiftuiMain";
 import { tailwindMain } from "../../tailwind/tailwindMain";
 
@@ -18,6 +19,8 @@ export const convertToCode = async (
       return await swiftuiMain(nodes, settings);
     case "Compose":
       return composeMain(nodes, settings);
+    case "ReactNative":
+      return reactNativeMain(nodes, settings);
     case "HTML":
     default:
       return (await htmlMain(nodes, settings)).html;

@@ -6,9 +6,9 @@ import {
 import { SwiftuiTextBuilder } from "./swiftuiTextBuilder";
 import { SwiftuiDefaultBuilder } from "./swiftuiDefaultBuilder";
 import { PluginSettings } from "types";
-import { addWarning } from "../common/commonConversionWarnings";
 import { getVisibleNodes } from "../common/nodeVisibility";
 import { getPlaceholderImage } from "../common/images";
+import { createVectorAssetName } from "../common/assetNames";
 
 let localSettings: PluginSettings;
 let previousExecutionCache: string[];
@@ -71,6 +71,11 @@ const swiftuiWidgetGenerator = (
   let comp: string[] = [];
 
   visibleSceneNode.forEach((node) => {
+    if ((node as any).canBeFlattened) {
+      comp.push(swiftuiVectorAsset(node));
+      return;
+    }
+
     switch ((node as any).type) {
       case "RECTANGLE":
       case "ELLIPSE":
@@ -92,7 +97,8 @@ const swiftuiWidgetGenerator = (
         comp.push(swiftuiText(node));
         break;
       case "VECTOR":
-        addWarning("VectorNodes are not supported in SwiftUI");
+      case "BOOLEAN_OPERATION":
+        comp.push(swiftuiVectorAsset(node));
         break;
       case "SLICE":
       default:
@@ -101,6 +107,16 @@ const swiftuiWidgetGenerator = (
   });
 
   return comp.join("\n");
+};
+
+const swiftuiVectorAsset = (node: SceneNode): string => {
+  const assetName = createVectorAssetName(node.id).replace(/\.svg$/i, "");
+  return new SwiftuiDefaultBuilder(
+    `Image("${assetName}")\n  .resizable()\n  .scaledToFit()`,
+  )
+    .size(node)
+    .commonPositionStyles(node)
+    .build();
 };
 
 // properties named propSomething always take care of ","
@@ -167,7 +183,6 @@ const getSwiftUIImage = (node: SceneNode): string => {
     return "";
   }
 
-  addWarning("Image fills are exported as project assets");
   const imageName = getPlaceholderImage(
     node.width,
     node.height,

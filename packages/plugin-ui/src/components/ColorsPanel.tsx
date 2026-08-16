@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { SolidColorConversion } from "types";
+import { useI18n } from "../i18n";
 
 const ColorsPanel = (props: {
   colors: SolidColorConversion[];
   onColorClick: (color: string) => void;
 }) => {
+  const { t } = useI18n();
   const [isPressed, setIsPressed] = useState(-1);
 
   const handleButtonClick = (value: string, idx: number) => {
@@ -28,10 +30,15 @@ const ColorsPanel = (props: {
       <div className="p-0 pb-2">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            Color Palette
+            {t("colors.title")}
           </h2>
           <span className="text-xs bg-muted dark:bg-muted px-2 py-1 rounded-xl text-muted-foreground">
-            {props.colors.length} color{props.colors.length > 1 ? "s" : ""}
+            {t(
+              props.colors.length === 1
+                ? "colors.count_one"
+                : "colors.count_other",
+              { count: props.colors.length },
+            )}
           </span>
         </div>
       </div>

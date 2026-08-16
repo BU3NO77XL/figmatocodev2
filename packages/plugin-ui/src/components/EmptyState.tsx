@@ -1,6 +1,8 @@
 import React from "react";
+import { useI18n } from "../i18n";
 
 const EmptyState = () => {
+  const { t } = useI18n();
   return (
     <div className="flex w-full flex-col items-center justify-center px-4 py-12 text-center">
       {/* Illustration: a Figma-style selection box turning into code */}
@@ -167,10 +169,10 @@ const EmptyState = () => {
 
       {/* Copy */}
       <h3 className="text-[15px] font-medium text-neutral-800 dark:text-neutral-200">
-        Nothing selected
+        {t("emptyState.title")}
       </h3>
       <p className="mt-2 max-w-[280px] text-sm leading-5 text-neutral-600 dark:text-neutral-400">
-        Select a layer to get started
+        {t("emptyState.description")}
       </p>
     </div>
   );

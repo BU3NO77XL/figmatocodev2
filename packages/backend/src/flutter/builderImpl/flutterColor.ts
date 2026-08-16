@@ -95,7 +95,6 @@ export const flutterDecorationImage = (
   fill: ImagePaint,
   imagePlaceholderMode: "remote" | "asset" = "remote",
 ) => {
-  addWarning("Image fills are replaced with placeholders");
   return generateWidgetCode("DecorationImage", {
     image: `NetworkImage("${getPlaceholderImage(
       node.width,
@@ -108,13 +107,14 @@ export const flutterDecorationImage = (
 };
 
 const fitToBoxFit = (fill: ImagePaint): string => {
-  switch (fill.scaleMode) {
+  switch (fill.scaleMode as string) {
     case "FILL":
       return "BoxFit.cover"; // FILL in Figma covers the entire area, similar to BoxFit.cover
     case "FIT":
       return "BoxFit.contain"; // FIT in Figma fits the image while maintaining aspect ratio, like BoxFit.contain
+    case "CROP":
     case "STRETCH":
-      return "BoxFit.fill"; // STRETCH in Figma stretches the image, like BoxFit.fill
+      return "BoxFit.cover";
     case "TILE":
       return "BoxFit.none"; // TILE doesn't have a direct equivalent, but BoxFit.none is closest
     default:

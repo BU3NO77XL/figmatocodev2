@@ -16,6 +16,7 @@ import { PluginSettings } from "types";
 import { Button, buttonVariants } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { cn } from "../lib/utils";
+import { useI18n } from "../i18n";
 
 type AboutProps = {
   useOldPluginVersion?: boolean;
@@ -29,6 +30,7 @@ const About = ({
   useOldPluginVersion = false,
   onPreferenceChanged,
 }: AboutProps) => {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   const copySelectionJson = async () => {
@@ -59,9 +61,9 @@ const About = ({
         </div>
         <h2 className="text-2xl font-bold mb-1">Figma to Code</h2>
         <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-300">
-          <span>Created with</span>
+          <span>{t("about.createdWith")}</span>
           <Heart size={14} className="text-red-500 fill-red-500" />
-          <span>by Bernardo Ferrari</span>
+          <span>{t("about.by")}</span>
         </div>
         <div className="mt-3 flex gap-3">
           <a
@@ -69,7 +71,7 @@ const About = ({
             target="_blank"
             rel="noopener noreferrer"
             className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
-            aria-label="GitHub Profile"
+            aria-label={t("about.githubProfile")}
           >
             <GithubLogo />
           </a>
@@ -78,7 +80,7 @@ const About = ({
             target="_blank"
             rel="noopener noreferrer"
             className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
-            aria-label="Twitter Profile"
+            aria-label={t("about.twitterProfile")}
           >
             <XLogo />
           </a>
@@ -94,12 +96,12 @@ const About = ({
               <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
                 <Lock size={20} className="text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="font-semibold text-base">Privacy Policy</h3>
+              <h3 className="font-semibold text-base">
+                {t("about.privacyTitle")}
+              </h3>
             </div>
             <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed">
-              This plugin is completely private. All of your design data is
-              processed locally in your browser and never leaves your computer.
-              No analytics, no data collection, no tracking.
+              {t("about.privacyText")}
             </p>
           </CardContent>
         </Card>
@@ -111,11 +113,12 @@ const About = ({
               <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
                 <GithubLogo className="text-purple-600 dark:text-purple-400" />
               </div>
-              <h3 className="font-semibold text-base">Open Source</h3>
+              <h3 className="font-semibold text-base">
+                {t("about.openSourceTitle")}
+              </h3>
             </div>
             <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed mb-3">
-              Figma to Code is completely open-source. Contributions, bug
-              reports, and feature requests are welcome!
+              {t("about.openSourceText")}
             </p>
             <a
               href="https://github.com/bernaferrari/figmatocode"
@@ -127,7 +130,7 @@ const About = ({
               )}
             >
               <Star size={14} className="text-yellow-500 fill-yellow-500" />
-              <span>View on GitHub</span>
+              <span>{t("about.viewGithub")}</span>
             </a>
           </CardContent>
         </Card>
@@ -139,28 +142,28 @@ const About = ({
               <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg">
                 <Zap size={20} className="text-amber-600 dark:text-amber-400" />
               </div>
-              <h3 className="font-semibold text-base">Features</h3>
+              <h3 className="font-semibold text-base">
+                {t("about.featuresTitle")}
+              </h3>
             </div>
             <ul className="text-neutral-600 dark:text-neutral-300 space-y-2 leading-relaxed">
               <li className="flex items-start gap-2">
                 <div className="mt-1.5">
                   <ArrowRightIcon size={12} />
                 </div>
-                <span>
-                  Convert Figma designs to HTML, Tailwind, Flutter, and SwiftUI
-                </span>
+                <span>{t("about.featureConvert")}</span>
               </li>
               <li className="flex items-start gap-2">
                 <div className="mt-1.5">
                   <ArrowRightIcon size={12} />
                 </div>
-                <span>Extract colors and gradients from your designs</span>
+                <span>{t("about.featureExtract")}</span>
               </li>
               <li className="flex items-start gap-2">
                 <div className="mt-1.5">
                   <ArrowRightIcon size={12} />
                 </div>
-                <span>Get responsive code that matches your design</span>
+                <span>{t("about.featureResponsive")}</span>
               </li>
             </ul>
           </CardContent>
@@ -176,10 +179,12 @@ const About = ({
                   className="text-green-600 dark:text-green-400"
                 />
               </div>
-              <h3 className="font-semibold text-base">Get in Touch</h3>
+              <h3 className="font-semibold text-base">
+                {t("about.contactTitle")}
+              </h3>
             </div>
             <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed mb-3">
-              Have feedback, questions, or need help? Open a GitHub issue:
+              {t("about.contactText")}
             </p>
             <div className="space-y-2">
               <a
@@ -189,7 +194,7 @@ const About = ({
                 className="flex items-center gap-2 text-green-600 dark:text-green-400 hover:underline"
               >
                 <GithubLogo width={16} height={16} />
-                <span>Report an issue on GitHub</span>
+                <span>{t("about.reportIssue")}</span>
               </a>
             </div>
           </CardContent>
@@ -202,11 +207,12 @@ const About = ({
               <div className="p-2 bg-rose-100 dark:bg-rose-900/40 rounded-lg">
                 <Code size={20} className="text-rose-600 dark:text-rose-400" />
               </div>
-              <h3 className="font-semibold text-base">Debug Helper</h3>
+              <h3 className="font-semibold text-base">
+                {t("about.debugTitle")}
+              </h3>
             </div>
             <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed mb-4">
-              Having an issue? Help me debug by copying the JSON of your
-              selected elements. This can be attached when reporting issues.
+              {t("about.debugText")}
             </p>
             <Button
               onClick={copySelectionJson}
@@ -215,12 +221,12 @@ const About = ({
               {copied ? (
                 <>
                   <CheckCircle size={16} />
-                  <span>Copied!</span>
+                  <span>{t("copy.copied")}</span>
                 </>
               ) : (
                 <>
                   <Copy size={16} />
-                  <span>Copy Selection JSON</span>
+                  <span>{t("about.copyJson")}</span>
                 </>
               )}
             </Button>
@@ -236,12 +242,10 @@ const About = ({
                 ) : (
                   <ToggleLeft size={16} />
                 )}
-                <span>Use previous plugin version</span>
+                <span>{t("about.oldVersion")}</span>
               </button>
               <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                The new version is up to 100x faster, but might still cause some
-                issues. If you encounter problems, you can switch to the old
-                version (and please report issues so they can be fixed).
+                {t("about.oldVersionText")}
               </p>
             </div>
           </CardContent>
@@ -250,9 +254,7 @@ const About = ({
 
       {/* Footer */}
       <div className="mt-2 text-center text-neutral-500 dark:text-neutral-400 text-xs">
-        <p>
-          © {new Date().getFullYear()} Bernardo Ferrari. All rights reserved.
-        </p>
+        <p>{t("about.rights", { year: new Date().getFullYear() })}</p>
       </div>
     </div>
   );
