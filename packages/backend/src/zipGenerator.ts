@@ -13,6 +13,7 @@ export interface ProjectVector {
   name: string;
   bytes: Uint8Array;
   nodeId: string;
+  nodeName?: string;
   kind: "vector";
   format: "svg" | "png";
   fallbackReason?: string;

@@ -179,7 +179,7 @@ const flutterVectorAsset = (node: SceneNode): string =>
       height: node.height,
       fit: "BoxFit.contain",
     },
-    [`"${getFlutterVectorAssetPath(node.id)}"`],
+    [`"${getFlutterVectorAssetPath(node.id, undefined, node.name)}"`],
   );
 
 const flutterGroup = (node: GroupNode): string => {

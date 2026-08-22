@@ -28,7 +28,7 @@ describe("Flutter vector assets", () => {
     expect(code).toContain("import 'package:flutter_svg/flutter_svg.dart';");
     expect(code).toContain("class FigmaIcon extends StatelessWidget");
     expect(code).toContain("SvgPicture.asset(");
-    expect(code).toContain('"assets/vectors/vector-55-66.svg"');
+    expect(code).toContain('"assets/vectors/vector-icon-55-66.svg"');
     expect([...warnings]).not.toContain(
       "VectorNodes are not supported in Flutter",
     );

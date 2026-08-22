@@ -374,8 +374,9 @@ const exportProjectVectors = async (
             bytes: new TextEncoder().encode(svg),
             format: "svg",
             kind: "vector",
-            name: createVectorAssetName(node.id),
+            name: createVectorAssetName(node.id, "svg", node.name),
             nodeId: node.id,
+            nodeName: node.name,
           });
           svgError = undefined;
           break;
@@ -395,8 +396,9 @@ const exportProjectVectors = async (
             svgError instanceof Error ? svgError.message : String(svgError),
           format: "png",
           kind: "vector",
-          name: createVectorAssetName(node.id, "png"),
+          name: createVectorAssetName(node.id, "png", node.name),
           nodeId: node.id,
+          nodeName: node.name,
         });
       }
     }
@@ -429,11 +431,24 @@ const inferNodeIdFromVectorAssetName = (assetName: string) => {
     return null;
   }
 
+  // New format: vector-{name}-{id} where id is the last parts
+  // Old format: vector-{id}
+  // We need to reconstruct the node ID from the last parts
+  // The node ID format is like "123:456" or "I123:456;789:abc"
+  
   if (/^I\d+$/i.test(parts[0]) && parts.length >= 4) {
+    // Format: I123-456-789-abc -> I123:456;789:abc
     return `${parts[0]}:${parts[1]};${parts[2]}:${parts.slice(3).join("-")}`;
   }
 
-  return `${parts[0]}:${parts.slice(1).join("-")}`;
+  // Format: 123-456 -> 123:456
+  // Or with name prefix: name-123-456 -> 123:456
+  // Take the last 2 parts as the node ID
+  if (parts.length >= 2) {
+    return `${parts[parts.length - 2]}:${parts[parts.length - 1]}`;
+  }
+
+  return null;
 };
 
 const exportRequiredFlutterVectorAssets = async (
@@ -627,16 +642,18 @@ const downloadProject = async (format: DownloadProjectFormat) => {
       );
     }
     if (format === "reactnative") {
-      const assetName = createVectorAssetName(vector.nodeId).replace(
-        /\.svg$/i,
-        "",
-      );
+      const assetName = createVectorAssetName(
+        vector.nodeId,
+        "svg",
+        vector.nodeName,
+      ).replace(/\.svg$/i, "");
       return rawCode.includes(`assetName="${assetName}"`);
     }
-    const assetName = createVectorAssetName(vector.nodeId).replace(
-      /\.svg$/i,
-      "",
-    );
+    const assetName = createVectorAssetName(
+      vector.nodeId,
+      "svg",
+      vector.nodeName,
+    ).replace(/\.svg$/i, "");
     return rawCode.includes(`Image("${assetName}")`);
   });
   const registeredVectorPaths = new Set(
@@ -667,7 +684,10 @@ const downloadProject = async (format: DownloadProjectFormat) => {
   if (format === "swiftui") {
     const registeredSwiftAssets = new Set(
       vectors.map((vector) =>
-        createVectorAssetName(vector.nodeId).replace(/\.svg$/i, ""),
+        createVectorAssetName(vector.nodeId, "svg", vector.nodeName).replace(
+          /\.svg$/i,
+          "",
+        ),
       ),
     );
     const requiredSwiftAssets = new Set(

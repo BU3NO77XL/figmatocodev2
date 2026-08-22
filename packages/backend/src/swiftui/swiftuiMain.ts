@@ -110,7 +110,7 @@ const swiftuiWidgetGenerator = (
 };
 
 const swiftuiVectorAsset = (node: SceneNode): string => {
-  const assetName = createVectorAssetName(node.id).replace(/\.svg$/i, "");
+  const assetName = createVectorAssetName(node.id, "svg", node.name).replace(/\.svg$/i, "");
   return new SwiftuiDefaultBuilder(
     `Image("${assetName}")\n  .resizable()\n  .scaledToFit()`,
   )

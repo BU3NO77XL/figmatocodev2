@@ -704,7 +704,7 @@ const renderVector = (
   const styleKey = addStyle(context, "vector", {
     ...getBaseStyle(node, parentLayoutMode),
   });
-  const assetName = createVectorAssetName(node.id).replace(/\.svg$/i, "");
+  const assetName = createVectorAssetName(node.id, "svg", node.name).replace(/\.svg$/i, "");
   return `<FigmaVector assetName="${assetName}" width={${numberToFixedString(node.width)}} height={${numberToFixedString(node.height)}} style={styles.${styleKey}} />`;
 };
 

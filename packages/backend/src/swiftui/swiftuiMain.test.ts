@@ -26,7 +26,7 @@ describe("SwiftUI vector assets", () => {
 
     const code = swiftuiMain([node], settings);
 
-    expect(code).toContain('Image("vector-55-66")');
+    expect(code).toContain('Image("vector-icon-55-66")');
     expect(code).toContain(".resizable()");
     expect(code).toContain(".scaledToFit()");
     expect([...warnings]).not.toContain(
