@@ -143,20 +143,22 @@ const flutterWidgetGenerator = (
         comp.push(flutterContainer(node, ""));
         break;
       case "GROUP":
-        comp.push(flutterGroup(node));
+        comp.push(flutterGroup(node as GroupNode));
         break;
       case "FRAME":
       case "INSTANCE":
       case "COMPONENT":
       case "COMPONENT_SET":
       case "SLOT":
-        comp.push(flutterFrame(node));
+        comp.push(
+          flutterFrame(node as SceneNode & BaseFrameMixin & MinimalBlendMixin),
+        );
         break;
       case "SECTION":
         comp.push(flutterContainer(node, ""));
         break;
       case "TEXT":
-        comp.push(flutterText(node));
+        comp.push(flutterText(node as TextNode));
         break;
       case "VECTOR":
       case "BOOLEAN_OPERATION":

@@ -84,7 +84,8 @@ export const convertNodeToAltNode =
 
       // Text Nodes
       case "TEXT":
-        globalTextStyleSegments[node.id] = extractStyledTextSegments(node);
+        globalTextStyleSegments[node.id] =
+          extractStyledTextSegments(node) as StyledTextSegmentSubset[];
         return cloneNode(node, parent);
 
       // Unsupported Nodes
@@ -144,10 +145,10 @@ export const cloneNode = <T extends BaseNode>(
     parent: cloned.parent,
     originalNode: node,
     canBeFlattened: canBeFlattened(node),
-  } as AltNode<T>;
+  } as unknown as AltNode<T>;
 
   if (globalTextStyleSegments[node.id]) {
-    altNode.styledTextSegments = globalTextStyleSegments[node.id];
+    (altNode as any).styledTextSegments = globalTextStyleSegments[node.id];
   }
 
   return altNode;

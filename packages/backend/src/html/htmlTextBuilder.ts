@@ -266,7 +266,7 @@ export class HtmlTextBuilder extends HtmlDefaultBuilder {
           effect.type === "LAYER_BLUR" &&
           effect.visible !== false &&
           effect.radius > 0,
-      );
+      ) as BlurEffect | undefined;
       if (blurEffect && blurEffect.radius) {
         return `blur(${blurEffect.radius}px)`;
       }

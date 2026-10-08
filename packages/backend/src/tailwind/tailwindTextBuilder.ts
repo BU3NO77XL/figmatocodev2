@@ -14,6 +14,7 @@ import { TailwindDefaultBuilder } from "./tailwindDefaultBuilder";
 import { config } from "./tailwindConfig";
 import { StyledTextSegmentSubset } from "types";
 import { localTailwindSettings } from "./tailwindMain";
+import type { Paint as ApiPaint } from "../api_types";
 
 export class TailwindTextBuilder extends TailwindDefaultBuilder {
   getTextSegments(node: TextNode): {
@@ -91,7 +92,10 @@ export class TailwindTextBuilder extends TailwindDefaultBuilder {
     // Implement a function to convert fills to the appropriate Tailwind CSS color classes.
     // This can be based on your project's configuration and color palette.
     // For example, suppose your project uses the default Tailwind CSS color palette:
-    return tailwindColorFromFills(fills, "text");
+    return tailwindColorFromFills(
+      fills as unknown as readonly ApiPaint[],
+      "text",
+    );
   };
 
   fontSize = (fontSize: number) => {
@@ -310,7 +314,7 @@ export class TailwindTextBuilder extends TailwindDefaultBuilder {
       const effects = (this.node as TextNode).effects;
       const blurEffect = effects.find(
         (effect) => effect.type === "LAYER_BLUR" && effect.visible !== false,
-      );
+      ) as BlurEffect | undefined;
       if (blurEffect && blurEffect.radius && blurEffect.radius > 0) {
         const blurSuffix = pxToBlur(blurEffect.radius);
         if (blurSuffix) {

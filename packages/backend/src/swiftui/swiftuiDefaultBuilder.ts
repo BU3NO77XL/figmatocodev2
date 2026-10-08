@@ -20,6 +20,7 @@ import {
 import { SwiftUIElement } from "./builderImpl/swiftuiParser";
 import { SwiftUIModifier } from "types";
 import { swiftuiSolidColor } from "./builderImpl/swiftuiColor";
+import { AltNode } from "../alt_api_types";
 
 export class SwiftuiDefaultBuilder {
   element: SwiftUIElement;
@@ -47,7 +48,7 @@ export class SwiftuiDefaultBuilder {
   blend(node: SceneNode & LayoutMixin & MinimalBlendMixin): this {
     this.pushModifier(
       swiftuiVisibility(node),
-      swiftuiRotation(node),
+      swiftuiRotation(node as unknown as AltNode),
       swiftuiOpacity(node),
       swiftuiBlendMode(node),
     );

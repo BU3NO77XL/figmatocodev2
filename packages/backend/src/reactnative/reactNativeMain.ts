@@ -58,10 +58,10 @@ const toLocalComponentName = (
 
 const isContainerNode = (
   node: SceneNode,
-): node is SceneNode & Partial<ChildrenMixin> =>
+): node is SceneNode & ChildrenMixin =>
   "children" in node && Array.isArray(node.children);
 
-const styleToCode = (style: RNStyle) => {
+const styleToCode = (style: RNStyle): string => {
   const entries = Object.entries(style).filter(
     ([, value]) => value !== undefined,
   );
@@ -75,7 +75,7 @@ const styleToCode = (style: RNStyle) => {
         ? `${key}: ${value}`
         : typeof value === "string"
           ? `${key}: ${JSON.stringify(value)}`
-          : `${key}: ${styleToCode(value)}`,
+          : `${key}: ${styleToCode(value as RNStyleObject)}`,
     )
     .join(", ")} }`;
 };
@@ -139,11 +139,11 @@ const getGradientFill = (node: SceneNode): GradientPaint | undefined => {
     return undefined;
   }
 
-  return fill as GradientPaint;
+  return fill as unknown as GradientPaint;
 };
 
 const getResizeMode = (fill?: ImagePaint) => {
-  switch (fill?.scaleMode) {
+  switch (fill?.scaleMode as string | undefined) {
     case "FIT":
       return "contain";
     case "STRETCH":
@@ -156,7 +156,7 @@ const getResizeMode = (fill?: ImagePaint) => {
 const getBorderStyle = (node: SceneNode): RNStyle => {
   if (
     !("strokes" in node) ||
-    node.strokes === figma.mixed ||
+    (node.strokes as readonly Paint[] | typeof figma.mixed) === figma.mixed ||
     !Array.isArray(node.strokes)
   ) {
     return {};
@@ -166,13 +166,13 @@ const getBorderStyle = (node: SceneNode): RNStyle => {
     .reverse()
     .find((fill) => fill.visible !== false && fill.type === "SOLID");
 
-  if (!stroke || !("strokeWeight" in node) || node.strokeWeight <= 0) {
+  if (!stroke || !("strokeWeight" in node) || (node.strokeWeight as number) <= 0) {
     return {};
   }
 
   return {
     borderColor: htmlColor(stroke.color, stroke.opacity ?? 1),
-    borderWidth: Number(numberToFixedString(node.strokeWeight)),
+    borderWidth: Number(numberToFixedString(node.strokeWeight as number)),
   };
 };
 
@@ -196,7 +196,7 @@ const radiusToStyle = (node: SceneNode): RNStyle => {
   };
 };
 
-const textAlignMap: Record<TextAlignHorizontal, string> = {
+const textAlignMap: Record<"CENTER" | "JUSTIFIED" | "LEFT" | "RIGHT", string> = {
   CENTER: "center",
   JUSTIFIED: "justify",
   LEFT: "left",
@@ -469,11 +469,11 @@ const getLayoutStyle = (node: SceneNode): RNStyle => {
 
   if (node.layoutWrap === "WRAP") {
     style.flexWrap = "wrap";
-    if (node.counterAxisSpacing > 0) {
+    if ((node.counterAxisSpacing as number) > 0) {
       if (node.layoutMode === "HORIZONTAL") {
-        style.rowGap = Number(numberToFixedString(node.counterAxisSpacing));
+        style.rowGap = Number(numberToFixedString(node.counterAxisSpacing as number));
       } else {
-        style.columnGap = Number(numberToFixedString(node.counterAxisSpacing));
+        style.columnGap = Number(numberToFixedString(node.counterAxisSpacing as number));
       }
     }
 
@@ -516,7 +516,9 @@ const getContainerStyle = (
 };
 
 const getLinearGradientProps = (fill: GradientPaint) => {
-  const [start, end] = fill.gradientHandlePositions;
+  const [start, end] = (fill as GradientPaint & {
+    gradientHandlePositions: Vector[];
+  }).gradientHandlePositions;
   return {
     colors: fill.gradientStops.map((stop) =>
       htmlColor(stop.color, stop.color.a * (fill.opacity ?? 1)),
@@ -671,15 +673,15 @@ const renderText = (
       fills:
         node.fills !== figma.mixed && Array.isArray(node.fills) ? node.fills : [],
       fontName: fontName ?? { family: "System", style: "Regular" },
-      fontSize: node.fontSize,
+      fontSize: node.fontSize as number,
       fontWeight:
         typeof (node as any).fontWeight === "number"
           ? (node as any).fontWeight
           : Number(fontWeightFromStyle(fontName?.style) ?? "400"),
-      letterSpacing: node.letterSpacing,
-      lineHeight: node.lineHeight,
-      textCase: node.textCase,
-      textDecoration: node.textDecoration,
+      letterSpacing: node.letterSpacing as LetterSpacing,
+      lineHeight: node.lineHeight as LineHeight,
+      textCase: node.textCase as TextCase,
+      textDecoration: node.textDecoration as TextDecoration,
     },
     parentLayoutMode,
   )};
@@ -800,7 +802,7 @@ const renderNode = (
 
   const childLayoutMode: LayoutModeLike =
     "layoutMode" in node && node.layoutMode !== "NONE"
-      ? node.layoutMode
+      ? (node.layoutMode as "HORIZONTAL" | "VERTICAL")
       : "NONE";
   const children = isContainerNode(node)
     ? getVisibleNodes(node.children)

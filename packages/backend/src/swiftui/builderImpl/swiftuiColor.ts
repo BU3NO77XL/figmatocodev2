@@ -1,4 +1,8 @@
 import { retrieveTopFill } from "../../common/retrieveFill";
+import {
+  Paint as ApiPaint,
+  GradientPaint as ApiGradientPaint,
+} from "../../api_types";
 import { gradientAngle } from "../../common/color";
 import { nearestValue } from "../../tailwind/conversionTables";
 import { numberToFixedString } from "../../common/numToAutoFixed";
@@ -50,7 +54,7 @@ export const swiftuiSolidColor = (
 export const swiftuiSolidColorFromDirectFills = (
   fills: ReadonlyArray<Paint> | PluginAPI["mixed"],
 ): string => {
-  const fill = retrieveTopFill(fills);
+  const fill = retrieveTopFill(fills as unknown as readonly ApiPaint[]);
 
   if (fill && fill.type === "SOLID") {
     // opacity should only be null on set, not on get. But better be prevented.
@@ -82,7 +86,7 @@ export const swiftuiGradient = (fill: GradientPaint): string => {
     return ""; // Only handling linear gradients here for simplicity
   }
 
-  const angle = gradientAngle(fill);
+  const angle = gradientAngle(fill as unknown as ApiGradientPaint);
   const direction = gradientDirection(angle);
 
   const colors = fill.gradientStops

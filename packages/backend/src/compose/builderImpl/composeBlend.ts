@@ -73,8 +73,9 @@ export const composeBlendModifiers = (node: AltNode, child: string): string => {
   const modifiers: string[] = [];
 
   // Add opacity modifier
-  if (node.opacity !== undefined && node.opacity !== 1) {
-    const opacity = numberToFixedString(node.opacity);
+  const blendNode = node as unknown as MinimalBlendMixin;
+  if (blendNode.opacity !== undefined && blendNode.opacity !== 1) {
+    const opacity = numberToFixedString(blendNode.opacity);
     modifiers.push(`alpha(${opacity}f)`);
   }
 

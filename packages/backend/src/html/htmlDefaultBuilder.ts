@@ -28,6 +28,7 @@ import {
   formatStyleAttribute,
 } from "../common/commonFormatAttributes";
 import { HTMLSettings } from "types";
+import type { AltNode } from "../alt_api_types";
 import {
   cssCollection,
   generateUniqueClassName,
@@ -147,7 +148,7 @@ export class HtmlDefaultBuilder {
     const { node, isJSX } = this;
     this.addStyles(
       htmlVisibility(node, isJSX),
-      ...htmlRotation(node as LayoutMixin, isJSX),
+      ...htmlRotation(node as unknown as AltNode, isJSX),
       htmlOpacity(node as MinimalBlendMixin, isJSX),
       htmlBlendMode(node as MinimalBlendMixin, isJSX),
     );
@@ -390,7 +391,7 @@ export class HtmlDefaultBuilder {
     if ("effects" in node && node.effects.length > 0) {
       const blur = node.effects.find(
         (e) => e.type === "LAYER_BLUR" && e.visible,
-      );
+      ) as BlurEffect | undefined;
       if (blur) {
         this.addStyles(
           formatWithJSX(
@@ -403,7 +404,7 @@ export class HtmlDefaultBuilder {
 
       const backgroundBlur = node.effects.find(
         (e) => e.type === "BACKGROUND_BLUR" && e.visible,
-      );
+      ) as BlurEffect | undefined;
       if (backgroundBlur) {
         this.addStyles(
           formatWithJSX(

@@ -13,7 +13,7 @@ export const composeSize = (node: SceneNode): string | null => {
       node.layoutSizingHorizontal === "FILL"
     ) {
       modifiers.push("fillMaxWidth()");
-    } else if (width > 0) {
+    } else if ((width as unknown as number) > 0) {
       modifiers.push(`width(${width}.dp)`);
     }
 
@@ -22,7 +22,7 @@ export const composeSize = (node: SceneNode): string | null => {
       node.layoutSizingVertical === "FILL"
     ) {
       modifiers.push("fillMaxHeight()");
-    } else if (height > 0) {
+    } else if ((height as unknown as number) > 0) {
       modifiers.push(`height(${height}.dp)`);
     }
 

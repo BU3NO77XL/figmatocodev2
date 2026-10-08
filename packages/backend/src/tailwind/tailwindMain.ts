@@ -8,6 +8,7 @@ import { TailwindDefaultBuilder } from "./tailwindDefaultBuilder";
 import { tailwindAutoLayoutProps } from "./builderImpl/tailwindAutoLayout";
 import { renderAndAttachSVG } from "../altNodes/altNodeUtils";
 import { AltNode, PluginSettings, TailwindSettings } from "types";
+import type { Paint as ApiPaint } from "../api_types";
 
 export let localTailwindSettings: PluginSettings;
 let previousExecutionCache: {
@@ -57,21 +58,34 @@ const convertNode =
     switch ((node as any).type) {
       case "RECTANGLE":
       case "ELLIPSE":
-        return tailwindContainer(node, "", "", settings);
+        return tailwindContainer(
+          node as SceneNode &
+            SceneNodeMixin &
+            BlendMixin &
+            LayoutMixin &
+            GeometryMixin &
+            MinimalBlendMixin,
+          "",
+          "",
+          settings,
+        );
       case "GROUP":
-        return tailwindGroup(node, settings);
+        return tailwindGroup(node as GroupNode, settings);
       case "FRAME":
       case "COMPONENT":
       case "INSTANCE":
       case "COMPONENT_SET":
       case "SLOT":
-        return tailwindFrame(node, settings);
+        return tailwindFrame(
+          node as FrameNode | InstanceNode | ComponentNode | ComponentSetNode,
+          settings,
+        );
       case "TEXT":
-        return tailwindText(node, settings);
+        return tailwindText(node as TextNode, settings);
       case "LINE":
-        return tailwindLine(node, settings);
+        return tailwindLine(node as LineNode, settings);
       case "SECTION":
-        return tailwindSection(node, settings);
+        return tailwindSection(node as SectionNode, settings);
       case "VECTOR":
         if (!settings.embedVectors) {
           addWarning("Vector is not supported");
@@ -282,7 +296,7 @@ export const tailwindContainer = (
   // Determine if we should use img tag
   let tag = "div";
   let src = "";
-  const topFill = retrieveTopFill(node.fills);
+  const topFill = retrieveTopFill(node.fills as unknown as readonly ApiPaint[]);
 
   if (topFill?.type === "IMAGE") {
     const imageURL = getPlaceholderImage(
@@ -332,7 +346,7 @@ export const tailwindSection = async (
   const builder = new TailwindDefaultBuilder(node, settings)
     .size()
     .position()
-    .customColor(node.fills, "bg");
+    .customColor(node.fills as unknown as readonly ApiPaint[], "bg");
 
   const build = builder.build();
   return childrenStr

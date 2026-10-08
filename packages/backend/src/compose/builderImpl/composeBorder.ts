@@ -2,6 +2,7 @@ import { commonStroke } from "../../common/commonStroke";
 import { rgbTo6hex } from "../../common/color";
 import { numberToFixedString } from "../../common/numToAutoFixed";
 import { retrieveTopFill } from "../../common/retrieveFill";
+import { Paint as ApiPaint } from "../../api_types";
 
 /**
  * Helper function to convert RGBA paint to hex format for Compose
@@ -54,7 +55,9 @@ export const composeBorder = (
     return "";
   }
 
-  const strokeFill = retrieveTopFill(node.strokes);
+  const strokeFill = retrieveTopFill(
+    node.strokes as unknown as readonly ApiPaint[],
+  );
   if (!strokeFill) {
     return "";
   }
@@ -69,7 +72,7 @@ export const composeBorder = (
 
     return generateBorderModifier(
       stroke.all,
-      strokeFill,
+      strokeFill as unknown as Paint,
       strokeAlignment,
       shape,
     );
@@ -90,7 +93,12 @@ export const composeBorder = (
 
     // For now, use uniform border with max width
     // TODO: Consider using Canvas or custom drawing for true non-uniform borders
-    return generateBorderModifier(maxWidth, strokeFill, strokeAlignment, shape);
+    return generateBorderModifier(
+      maxWidth,
+      strokeFill as unknown as Paint,
+      strokeAlignment,
+      shape,
+    );
   }
 };
 

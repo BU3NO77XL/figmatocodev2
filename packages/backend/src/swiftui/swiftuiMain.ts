@@ -84,17 +84,17 @@ const swiftuiWidgetGenerator = (
         break;
       case "GROUP":
       case "SECTION":
-        comp.push(swiftuiGroup(node, indentLevel));
+        comp.push(swiftuiGroup(node as GroupNode | SectionNode, indentLevel));
         break;
       case "FRAME":
       case "INSTANCE":
       case "COMPONENT":
       case "COMPONENT_SET":
       case "SLOT":
-        comp.push(swiftuiFrame(node, indentLevel));
+        comp.push(swiftuiFrame(node as SceneNode & BaseFrameMixin, indentLevel));
         break;
       case "TEXT":
-        comp.push(swiftuiText(node));
+        comp.push(swiftuiText(node as TextNode));
         break;
       case "VECTOR":
       case "BOOLEAN_OPERATION":

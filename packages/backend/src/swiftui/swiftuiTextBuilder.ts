@@ -236,7 +236,7 @@ export class SwiftuiTextBuilder extends SwiftuiDefaultBuilder {
           effect.radius > 0,
       );
       if (blurEffect) {
-        return `.blur(radius: ${blurEffect.radius})`;
+        return `.blur(radius: ${(blurEffect as { radius?: number }).radius})`;
       }
     }
     return "";

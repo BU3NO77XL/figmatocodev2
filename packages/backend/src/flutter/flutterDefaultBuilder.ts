@@ -10,6 +10,7 @@ import {
   getCommonPositionValue,
 } from "../common/commonPosition";
 import { generateWidgetCode } from "../common/numToAutoFixed";
+import { AltNode } from "../alt_api_types";
 
 export class FlutterDefaultBuilder {
   child: string;
@@ -34,7 +35,7 @@ export class FlutterDefaultBuilder {
   blendAttr(node: SceneNode): this {
     // Only apply rotation via Transform if it wasn't already handled in the container
     if ("rotation" in node && !this.rotationApplied) {
-      this.child = flutterRotation(node, this.child);
+      this.child = flutterRotation(node as unknown as AltNode, this.child);
     }
 
     if ("visible" in node) {

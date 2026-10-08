@@ -7,6 +7,7 @@ import { FlutterDefaultBuilder } from "./flutterDefaultBuilder";
 import { flutterColorFromDirectFills } from "./builderImpl/flutterColor";
 import { commonLetterSpacing } from "../common/commonTextHeightSpacing";
 import { StyledTextSegmentSubset } from "types/src/types";
+import { Paint as ApiPaint } from "../api_types";
 
 export class FlutterTextBuilder extends FlutterDefaultBuilder {
   node?: TextNode;
@@ -69,7 +70,9 @@ export class FlutterTextBuilder extends FlutterDefaultBuilder {
     }
 
     return segments.map((segment) => {
-      const color = flutterColorFromDirectFills(segment.fills);
+      const color = flutterColorFromDirectFills(
+        segment.fills as unknown as readonly ApiPaint[],
+      );
 
       const fontSize = `${numberToFixedString(segment.fontSize)}`;
       const fontStyle = this.fontStyle(segment.fontName);
@@ -266,7 +269,7 @@ export const wrapTextWithLayerBlur = (
     );
     if (blurEffect) {
       return generateWidgetCode("ImageFiltered", {
-        imageFilter: `ImageFilter.blur(sigmaX: ${blurEffect.radius}, sigmaY: ${blurEffect.radius})`,
+        imageFilter: `ImageFilter.blur(sigmaX: ${(blurEffect as { radius?: number }).radius}, sigmaY: ${(blurEffect as { radius?: number }).radius})`,
         child: child,
       });
     }

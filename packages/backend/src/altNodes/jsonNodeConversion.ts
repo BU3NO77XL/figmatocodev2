@@ -444,15 +444,15 @@ const processNodePair = async (
     }
 
     // Inline text style.
-    Object.assign(jsonNode, jsonNode.style);
-    if (!jsonNode.textAutoResize) {
-      jsonNode.textAutoResize = "NONE";
+    Object.assign(jsonNode, (jsonNode as any).style);
+    if (!(jsonNode as any).textAutoResize) {
+      (jsonNode as any).textAutoResize = "NONE";
     }
   }
 
   // Always copy size and position
   if ("absoluteBoundingBox" in jsonNode && jsonNode.absoluteBoundingBox) {
-    if (jsonNode.parent) {
+    if ((jsonNode as any).parent) {
       // Extract width and height from bounding box and rotation. This is necessary because Figma JSON API doesn't have width and height.
       const rect = calculateRectangleFromBoundingBox(
         {
@@ -460,10 +460,10 @@ const processNodePair = async (
           height: jsonNode.absoluteBoundingBox.height,
           x:
             jsonNode.absoluteBoundingBox.x -
-            (jsonNode.parent?.absoluteBoundingBox.x || 0),
+            ((jsonNode as any).parent?.absoluteBoundingBox.x || 0),
           y:
             jsonNode.absoluteBoundingBox.y -
-            (jsonNode.parent?.absoluteBoundingBox.y || 0),
+            ((jsonNode as any).parent?.absoluteBoundingBox.y || 0),
         },
         -((jsonNode.rotation || 0) + (jsonNode.cumulativeRotation || 0)),
       );
@@ -511,7 +511,7 @@ const processNodePair = async (
       jsonNode.individualStrokeWeights.right;
   }
 
-  await getColorVariables(jsonNode, settings);
+  await getColorVariables(jsonNode as unknown as HasGeometryTrait, settings);
 
   // Some places check if paddingLeft exists. This makes sure they all exist, even if 0.
   if ("layoutMode" in jsonNode && jsonNode.layoutMode) {
@@ -530,16 +530,17 @@ const processNodePair = async (
   }
 
   // Set default layout properties if missing
-  if (!jsonNode.layoutMode) jsonNode.layoutMode = "NONE";
-  if (!jsonNode.layoutGrow) jsonNode.layoutGrow = 0;
-  if (!jsonNode.layoutSizingHorizontal)
-    jsonNode.layoutSizingHorizontal = "FIXED";
-  if (!jsonNode.layoutSizingVertical) jsonNode.layoutSizingVertical = "FIXED";
-  if (!jsonNode.primaryAxisAlignItems) {
-    jsonNode.primaryAxisAlignItems = "MIN";
+  if (!(jsonNode as any).layoutMode) (jsonNode as any).layoutMode = "NONE";
+  if (!(jsonNode as any).layoutGrow) (jsonNode as any).layoutGrow = 0;
+  if (!(jsonNode as any).layoutSizingHorizontal)
+    (jsonNode as any).layoutSizingHorizontal = "FIXED";
+  if (!(jsonNode as any).layoutSizingVertical)
+    (jsonNode as any).layoutSizingVertical = "FIXED";
+  if (!(jsonNode as any).primaryAxisAlignItems) {
+    (jsonNode as any).primaryAxisAlignItems = "MIN";
   }
-  if (!jsonNode.counterAxisAlignItems) {
-    jsonNode.counterAxisAlignItems = "MIN";
+  if (!(jsonNode as any).counterAxisAlignItems) {
+    (jsonNode as any).counterAxisAlignItems = "MIN";
   }
 
   // If layout sizing is HUG but there are no children, set it to FIXED
@@ -549,11 +550,11 @@ const processNodePair = async (
     Array.isArray(jsonNode.children) &&
     jsonNode.children.length > 0;
 
-  if (jsonNode.layoutSizingHorizontal === "HUG" && !hasChildren) {
-    jsonNode.layoutSizingHorizontal = "FIXED";
+  if ((jsonNode as any).layoutSizingHorizontal === "HUG" && !hasChildren) {
+    (jsonNode as any).layoutSizingHorizontal = "FIXED";
   }
-  if (jsonNode.layoutSizingVertical === "HUG" && !hasChildren) {
-    jsonNode.layoutSizingVertical = "FIXED";
+  if ((jsonNode as any).layoutSizingVertical === "HUG" && !hasChildren) {
+    (jsonNode as any).layoutSizingVertical = "FIXED";
   }
 
   // Process children recursively if both have children
@@ -604,10 +605,10 @@ const processNodePair = async (
     }
 
     // Replace children array with processed children
-    jsonNode.children = processedChildren;
+    (jsonNode as any).children = processedChildren;
 
     if (
-      jsonNode.layoutMode === "NONE" ||
+      (jsonNode as any).layoutMode === "NONE" ||
       jsonNode.children.some(
         (d: any) =>
           "layoutPositioning" in d && d.layoutPositioning === "ABSOLUTE",

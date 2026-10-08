@@ -3,6 +3,7 @@ import { numberToFixedString } from "../common/numToAutoFixed";
 import { ComposeDefaultBuilder } from "./composeDefaultBuilder";
 import { rgbTo6hex } from "../common/color";
 import { retrieveTopFill } from "../common/retrieveFill";
+import { Paint as ApiPaint } from "../api_types";
 
 // Cache static mappings for performance
 const FONT_WEIGHT_MAP: Record<number, string> = {
@@ -92,14 +93,17 @@ export class ComposeTextBuilder extends ComposeDefaultBuilder {
     }
 
     // Text color
-    const fill = retrieveTopFill(node.fills);
+    const fill = retrieveTopFill(node.fills as unknown as readonly ApiPaint[]);
     if (fill?.type === "SOLID") {
       const color = rgbTo6hex(fill.color);
       styles.push(`color = Color(0xFF${color.toUpperCase()})`);
     }
 
     // Letter spacing
-    if (node.letterSpacing !== figma.mixed && node.letterSpacing !== 0) {
+    if (
+      node.letterSpacing !== figma.mixed &&
+      (node.letterSpacing as unknown as number) !== 0
+    ) {
       const spacing = commonLetterSpacing(
         node.letterSpacing,
         node.fontSize as number,

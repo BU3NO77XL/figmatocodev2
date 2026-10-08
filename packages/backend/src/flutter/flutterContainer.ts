@@ -14,6 +14,7 @@ import { numberToFixedString } from "../common/numToAutoFixed";
 import { getCommonRadius } from "../common/commonRadius";
 import { commonStroke } from "../common/commonStroke";
 import { generateRotationMatrix } from "./builderImpl/flutterBlend";
+import { AltNode } from "../alt_api_types";
 
 export const flutterContainer = (
   node: SceneNode,
@@ -51,7 +52,7 @@ export const flutterContainer = (
 
   // If node has rotation, get the matrix for the transform property
   if ("rotation" in node) {
-    const matrix = generateRotationMatrix(node);
+    const matrix = generateRotationMatrix(node as unknown as AltNode);
     if (matrix) {
       properties.transform = matrix;
     }

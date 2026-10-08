@@ -31,7 +31,7 @@ import {
   getClassLabel,
 } from "../common/commonFormatAttributes";
 import { TailwindColorType, TailwindSettings } from "types";
-import { MinimalFillsTrait, MinimalStrokesTrait, Paint } from "../api_types";
+import { MinimalFillsTrait, Paint } from "../api_types";
 
 const isNotEmpty = (s: string) => s !== "" && s !== null && s !== undefined;
 const dropEmptyStrings = (strings: string[]) => strings.filter(isNotEmpty);
@@ -105,7 +105,10 @@ export class TailwindDefaultBuilder {
   }
 
   commonShapeStyles(): this {
-    this.customColor((this.node as MinimalFillsTrait).fills, "bg");
+    this.customColor(
+      (this.node as unknown as MinimalFillsTrait).fills,
+      "bg",
+    );
     this.radius();
     this.shadow();
     this.border();
@@ -127,7 +130,7 @@ export class TailwindDefaultBuilder {
       const { isOutline, property } = tailwindBorderWidth(this.node);
       this.addAttributes(property);
       this.customColor(
-        this.node.strokes as MinimalStrokesTrait,
+        this.node.strokes as readonly Paint[],
         isOutline ? "outline" : "border",
       );
     }
@@ -237,7 +240,7 @@ export class TailwindDefaultBuilder {
     if ("effects" in node && node.effects.length > 0) {
       const blur = node.effects.find(
         (e) => e.type === "LAYER_BLUR" && e.visible,
-      );
+      ) as BlurEffect | undefined;
       if (blur) {
         const blurValue = pxToBlur(blur.radius / 2);
         if (blurValue) {
@@ -249,7 +252,7 @@ export class TailwindDefaultBuilder {
 
       const backgroundBlur = node.effects.find(
         (e) => e.type === "BACKGROUND_BLUR" && e.visible,
-      );
+      ) as BlurEffect | undefined;
       if (backgroundBlur) {
         const backgroundBlurValue = pxToBlur(backgroundBlur.radius / 2);
         if (backgroundBlurValue) {
