@@ -5,12 +5,18 @@ import { isPreviewGlobal } from "../htmlMain";
 export const htmlSizePartial = (
   node: SceneNode,
   isJsx: boolean,
-): { width: string; height: string; constraints: string[] } => {
-  if (isPreviewGlobal && node.parent === undefined) {
+): {
+  width: string;
+  height: string;
+  constraints: string[];
+  shrink: string[];
+} => {
+  if (isPreviewGlobal && !node.parent) {
     return {
-      width: formatWithJSX("width", isJsx, "100%"),
-      height: formatWithJSX("height", isJsx, "100%"),
-      constraints: [],
+      width: formatWithJSX("width", isJsx, node.width),
+      height: formatWithJSX("height", isJsx, node.height),
+      constraints: [formatWithJSX("margin", isJsx, "auto")],
+      shrink: [],
     };
   }
 
@@ -55,6 +61,26 @@ export const htmlSizePartial = (
     }
   }
 
+  const shrink: string[] = [];
+  if (
+    nodeParent &&
+    "layoutMode" in nodeParent &&
+    nodeParent.layoutMode !== "NONE"
+  ) {
+    if (
+      typeof size.width === "number" &&
+      nodeParent.layoutMode === "HORIZONTAL"
+    ) {
+      shrink.push(formatWithJSX("flex-shrink", isJsx, "0"));
+    }
+    if (
+      typeof size.height === "number" &&
+      nodeParent.layoutMode === "VERTICAL"
+    ) {
+      shrink.push(formatWithJSX("flex-shrink", isJsx, "0"));
+    }
+  }
+
   // Handle min/max width/height constraints
   const constraints = [];
 
@@ -79,5 +105,6 @@ export const htmlSizePartial = (
     width: w,
     height: h,
     constraints: constraints,
+    shrink: shrink,
   };
 };

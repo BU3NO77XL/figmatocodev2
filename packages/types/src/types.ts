@@ -14,6 +14,7 @@ export interface HTMLSettings {
   useColorVariables: boolean;
   htmlGenerationMode: "html" | "jsx" | "styled-components" | "svelte";
   imagePlaceholderMode?: "remote" | "asset";
+  previewMode?: boolean;
 }
 export interface TailwindSettings extends HTMLSettings {
   tailwindGenerationMode: "html" | "jsx" | "twig";

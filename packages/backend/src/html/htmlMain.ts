@@ -355,7 +355,12 @@ export const generateHTMLPreview = async (
     nodes,
     {
       ...settings,
+      embedImages: true,
+      embedVectors: true,
+      framework: "HTML",
       htmlGenerationMode: "html",
+      imagePlaceholderMode: "remote",
+      previewMode: true,
     },
     nodes.length > 1 ? false : true,
   );
@@ -385,11 +390,43 @@ const htmlWidgetGenerator = async (
   return code;
 };
 
-const convertNode = (settings: HTMLSettings) => async (node: SceneNode) => {
-  if (settings.embedVectors && (node as any).canBeFlattened) {
-    const altNode = await renderAndAttachSVG(node);
+const isPreviewVectorType = (type: string): boolean =>
+  type === "VECTOR" ||
+  type === "BOOLEAN_OPERATION" ||
+  type === "STAR" ||
+  type === "POLYGON" ||
+  type === "LINE";
+
+const embedVectorSvg = async (
+  node: SceneNode,
+  settings: HTMLSettings,
+): Promise<string | null> => {
+  try {
+    const exportable = (node as any).canBeFlattened
+      ? node
+      : { ...node, canBeFlattened: true };
+    const altNode = await renderAndAttachSVG(exportable);
     if (altNode.svg) {
       return htmlWrapSVG(altNode, settings);
+    }
+    return null;
+  } catch (error) {
+    if (!settings.previewMode) {
+      throw error;
+    }
+    return null;
+  }
+};
+
+const convertNode = (settings: HTMLSettings) => async (node: SceneNode) => {
+  if (
+    settings.embedVectors &&
+    ((node as any).canBeFlattened ||
+      (settings.previewMode && isPreviewVectorType(node.type)))
+  ) {
+    const svgMarkup = await embedVectorSvg(node, settings);
+    if (svgMarkup !== null) {
+      return svgMarkup;
     }
   }
 
@@ -616,8 +653,14 @@ const htmlContainer = async (
         settings.embedImages &&
         (settings as PluginSettings).framework === "HTML"
       ) {
-        imgUrl = (await exportNodeAsBase64PNG(altNode, hasChildren)) ?? "";
-      } else {
+        try {
+          imgUrl = (await exportNodeAsBase64PNG(altNode, hasChildren)) ?? "";
+        } catch {
+          imgUrl = "";
+        }
+      }
+
+      if (!imgUrl) {
         imgUrl = getPlaceholderImage(
           node.width,
           node.height,
