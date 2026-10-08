@@ -18,7 +18,7 @@
 
 ## Recent updates
 
-- **Jetpack Compose** — new output target, with snippet/composable/screen modes and an Android Gradle project download that includes image drawables.
+- **Jetpack Compose** — new output target, with snippet/composable/screen modes and an Android Gradle project download that includes image and vector drawables.
 - **React Native** — new output target for generating React Native components from your Figma selection.
 - **Structure download with assets** — generated projects now include the folder structure plus local images, icons, and vector assets, with an `asset-manifest.json` describing every exported file.
 - **i18n / language support** — the interface is now available in English and Portuguese (pt-BR), with language switching built in.
@@ -52,7 +52,7 @@ The plugin can also package generated code and local assets into downloadable st
 - Web: Vite, Next.js, or static HTML
 - Flutter: source, `pubspec.yaml`, image assets, SVG vector assets, automatic PNG vector fallbacks, and setup instructions
 - SwiftUI: source, asset catalog, and setup instructions
-- Compose: an Android Gradle project with the activity, generated screen, image drawables, and setup instructions
+- Compose: an Android Gradle project with the activity, generated screen, image and vector drawables, and setup instructions
 
 These exports are deliberately small and dependency-light. They are starting points, not generated production applications.
 Every project download includes an `asset-manifest.json` with the originating Figma node, output path, format, byte size, source strategy, and any vector fallback reason.

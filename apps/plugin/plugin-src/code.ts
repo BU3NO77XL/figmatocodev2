@@ -8,6 +8,7 @@ import {
   reactNativeMain,
   htmlMain,
   extractProjectImageNodeIds,
+  extractProjectVectorNodeIds,
   generateProjectZip,
   injectReactNativeVectorHelpers,
   postSettingsChanged,
@@ -20,6 +21,7 @@ import { exportNodeAsPNG } from "backend/src/common/images";
 import {
   createImageAssetName,
   createVectorAssetName,
+  getComposeVectorDrawableFileName,
 } from "backend/src/common/assetNames";
 import { isLikelyIcon } from "backend/src/altNodes/iconDetection";
 import type {
@@ -326,6 +328,66 @@ const exportProjectImages = async (
   }
 
   return images;
+};
+
+const exportComposeVectorAssets = async (
+  selection: readonly SceneNode[],
+  rawCode: string,
+): Promise<ProjectVector[]> => {
+  const requiredNodeIds = extractProjectVectorNodeIds(rawCode);
+  if (requiredNodeIds.size === 0) {
+    return [];
+  }
+
+  const vectors: ProjectVector[] = [];
+  const missingNodeIds = new Set(requiredNodeIds);
+
+  const visit = async (node: SceneNode) => {
+    if (node.visible === false) {
+      return;
+    }
+
+    if (missingNodeIds.has(node.id)) {
+      const nodeId = node.id;
+      const nodeName = node.name;
+      if (!("exportAsync" in node)) {
+        throw new Error(
+          `Node ${nodeName || nodeId} cannot be exported as a vector.`,
+        );
+      }
+
+      vectors.push({
+        bytes: await node.exportAsync({
+          format: "PNG",
+          constraint: { type: "SCALE", value: 3 },
+        }),
+        format: "png",
+        kind: "vector",
+        name: getComposeVectorDrawableFileName(nodeId, nodeName),
+        nodeId,
+        nodeName,
+      });
+      missingNodeIds.delete(nodeId);
+    }
+
+    if ("children" in node) {
+      for (const child of node.children) await visit(child);
+    }
+  };
+
+  for (const node of selection) {
+    await visit(node);
+  }
+
+  if (missingNodeIds.size > 0) {
+    throw new Error(
+      `Could not find ${missingNodeIds.size} vector layer${
+        missingNodeIds.size === 1 ? "" : "s"
+      } in the selected content.`,
+    );
+  }
+
+  return vectors;
 };
 
 const collectImageNodeIds = (selection: readonly SceneNode[]) => {
@@ -642,27 +704,30 @@ const downloadProject = async (format: DownloadProjectFormat) => {
   const images = registeredImages.filter((image) =>
     requiredImageNodeIds.has(image.nodeId),
   );
-  const vectors = availableVectors.filter((vector) => {
-    if (format === "flutter") {
-      return getRequiredFlutterVectorAssetNames(rawCode).has(
-        getVectorSvgAssetName(vector),
-      );
-    }
-    if (format === "reactnative") {
-      const assetName = createVectorAssetName(
-        vector.nodeId,
-        "svg",
-        vector.nodeName,
-      ).replace(/\.svg$/i, "");
-      return rawCode.includes(`assetName="${assetName}"`);
-    }
-    const assetName = createVectorAssetName(
-      vector.nodeId,
-      "svg",
-      vector.nodeName,
-    ).replace(/\.svg$/i, "");
-    return rawCode.includes(`Image("${assetName}")`);
-  });
+  const vectors =
+    format === "compose"
+      ? await exportComposeVectorAssets(selection, rawCode)
+      : availableVectors.filter((vector) => {
+          if (format === "flutter") {
+            return getRequiredFlutterVectorAssetNames(rawCode).has(
+              getVectorSvgAssetName(vector),
+            );
+          }
+          if (format === "reactnative") {
+            const assetName = createVectorAssetName(
+              vector.nodeId,
+              "svg",
+              vector.nodeName,
+            ).replace(/\.svg$/i, "");
+            return rawCode.includes(`assetName="${assetName}"`);
+          }
+          const assetName = createVectorAssetName(
+            vector.nodeId,
+            "svg",
+            vector.nodeName,
+          ).replace(/\.svg$/i, "");
+          return rawCode.includes(`Image("${assetName}")`);
+        });
   const registeredVectorPaths = new Set(
     vectors.map((vector) => getVectorSvgAssetName(vector)),
   );
@@ -724,6 +789,7 @@ const downloadProject = async (format: DownloadProjectFormat) => {
     imageResolvedCode,
     assets,
     rootName,
+    format,
   );
   const finalCode =
     format === "reactnative"

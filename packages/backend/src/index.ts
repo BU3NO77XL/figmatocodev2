@@ -6,6 +6,7 @@ export { composeMain, composeCodeGenTextStyles } from "./compose/composeMain";
 export { reactNativeMain } from "./reactnative/reactNativeMain";
 export {
   extractProjectImageNodeIds,
+  extractProjectVectorNodeIds,
   generateProjectZip,
   injectReactNativeVectorHelpers,
   replaceProjectImagePlaceholders,

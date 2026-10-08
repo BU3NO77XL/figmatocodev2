@@ -80,15 +80,11 @@ const translateWarning = (
       "warnings.messages.previewPlaceholders",
     "Image fills are replaced with placeholders":
       "warnings.messages.imagePlaceholders",
-    "Image fills are replaced with placeholders in Compose":
-      "warnings.messages.imagePlaceholdersCompose",
     "Some images exported as Base64 PNG": "warnings.messages.base64Png",
     "VectorNodes are not supported in Flutter":
       "warnings.messages.vectorFlutter",
     "VectorNodes are not supported in SwiftUI":
       "warnings.messages.vectorSwiftUI",
-    "VectorNodes are not fully supported in Compose":
-      "warnings.messages.vectorCompose",
     "Vector nodes are not supported in React Native":
       "warnings.messages.vectorReactNative",
     "Vector is not supported": "warnings.messages.vectorUnsupported",

@@ -8,6 +8,17 @@ import { composeColor } from "./builderImpl/composeColor";
 import { composeShadow } from "./builderImpl/composeShadow";
 import { composePadding } from "./builderImpl/composePadding";
 
+const composeContentScale = (fill: ImagePaint): string => {
+  switch (fill.scaleMode) {
+    case "FIT":
+      return "contentScale = ContentScale.Fit";
+    case "TILE":
+      return "contentScale = ContentScale.None";
+    default:
+      return "contentScale = ContentScale.Crop";
+  }
+};
+
 export const composeContainer = (
   node: SceneNode & MinimalBlendMixin,
   child: string,
@@ -22,7 +33,8 @@ export const composeContainer = (
 
   const modifiers: string[] = [];
   let containerType = "Box";
-  let imagePlaceholder: string | null = null;
+  let imagePainter: string | null = null;
+  let imageContentScale = "";
 
   // Determine if we need a specific container type
   if ("fills" in node) {
@@ -30,12 +42,21 @@ export const composeContainer = (
       node.fills as unknown as readonly ApiPaint[],
     );
     if (topFill) {
-      if (topFill.type === "IMAGE" && imagePlaceholderMode === "asset") {
-        imagePlaceholder = getPlaceholderImage(
-          "width" in node ? node.width : 0,
-          "height" in node ? node.height : 0,
-          node.id,
-          "asset",
+      if (topFill.type === "IMAGE") {
+        imagePainter =
+          imagePlaceholderMode === "asset"
+            ? `painterResource("${getPlaceholderImage(
+                "width" in node ? node.width : 0,
+                "height" in node ? node.height : 0,
+                node.id,
+                "asset",
+              )}")`
+            : `rememberAsyncImagePainter("${getPlaceholderImage(
+                "width" in node ? node.width : 0,
+                "height" in node ? node.height : 0,
+              )}")`;
+        imageContentScale = composeContentScale(
+          topFill as unknown as ImagePaint,
         );
       } else {
         // Background color or gradient
@@ -102,14 +123,24 @@ export const composeContainer = (
       : "";
 
   // Generate container
-  if (imagePlaceholder) {
-    const imageWidget = `Image(
-    painter = painterResource("${imagePlaceholder}"),
-    contentDescription = null,
-    modifier = Modifier.matchParentSize()
-)`;
+  if (imagePainter) {
+    const buildImageWidget = (imageModifier: string | null): string => {
+      const props = [
+        `painter = ${imagePainter}`,
+        "contentDescription = null",
+        imageContentScale || null,
+        imageModifier,
+      ].filter((prop): prop is string => prop !== null && prop !== "");
+
+      return `Image(\n${props
+        .map((prop) => `    ${prop}`)
+        .join(",\n")}\n)`;
+    };
 
     if (child) {
+      const imageWidget = buildImageWidget(
+        "modifier = Modifier.matchParentSize()",
+      );
       if (modifierChain) {
         return `${containerType}(
     ${modifierChain}
@@ -124,17 +155,7 @@ export const composeContainer = (
 }`;
     }
 
-    if (modifierChain) {
-      return `Image(
-    painter = painterResource("${imagePlaceholder}"),
-    contentDescription = null,
-    ${modifierChain}
-)`;
-    }
-    return `Image(
-    painter = painterResource("${imagePlaceholder}"),
-    contentDescription = null
-)`;
+    return buildImageWidget(modifierChain || null);
   }
 
   if (child) {

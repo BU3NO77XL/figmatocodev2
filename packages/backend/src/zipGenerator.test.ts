@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { strFromU8, unzipSync } from "fflate";
 import {
   extractProjectImageNodeIds,
+  extractProjectVectorNodeIds,
   generateProjectZip,
   injectReactNativeVectorHelpers,
   replaceProjectImagePlaceholders,
@@ -87,6 +88,36 @@ describe("project image references", () => {
     ).toBe(
       `Image(\n    painter = painterResource(R.drawable.hero_12_34),\n    contentDescription = null\n)`,
     );
+  });
+
+  it("extracts encoded Figma node IDs from Compose vector placeholders", () => {
+    expect([
+      ...extractProjectVectorNodeIds(
+        `painterResource("__FIGMA_VECTOR_55%3A66__")`,
+      ),
+    ]).toEqual(["55:66"]);
+  });
+
+  it("uses a drawable reference for Compose vector assets", () => {
+    expect(
+      replaceProjectVectorReferences(
+        `painterResource("__FIGMA_VECTOR_55%3A66__")`,
+        [pngVector],
+        "mobile-app",
+        "compose",
+      ),
+    ).toBe("painterResource(R.drawable.vector_55_66)");
+  });
+
+  it("fails instead of leaving an unresolved Compose vector placeholder", () => {
+    expect(() =>
+      replaceProjectVectorReferences(
+        `painterResource("__FIGMA_VECTOR_55%3A66__")`,
+        [],
+        "mobile-app",
+        "compose",
+      ),
+    ).toThrow("Missing exported vector for Figma node 55:66");
   });
 
   it("fails instead of substituting an unrelated image", () => {
@@ -484,10 +515,21 @@ fun MobileApp() {
         contentDescription = null,
         modifier = Modifier.size(120.dp)
     )
+    Image(
+        painter = painterResource(R.drawable.vector_55_66),
+        contentDescription = null,
+        modifier = Modifier.size(24.dp)
+    )
 }`;
 
     const project = unzipProject(
-      generateProjectZip(kotlinScreen, "Compose", [image], "compose", "mobile-app"),
+      generateProjectZip(
+        kotlinScreen,
+        "Compose",
+        [image, pngVector],
+        "compose",
+        "mobile-app",
+      ),
     );
     const packageRoot = "mobile-app/app/src/main/java/com/figmaexport/mobile/app";
 
@@ -533,8 +575,16 @@ fun MobileApp() {
         "mobile-app/app/src/main/res/drawable/hero_12_34.png"
       ],
     ).toEqual(image.bytes);
+    expect(
+      project.files[
+        "mobile-app/app/src/main/res/drawable/vector_55_66.png"
+      ],
+    ).toEqual(pngVector.bytes);
     expect(project.text("mobile-app/asset-manifest.json")).toContain(
       "mobile-app/app/src/main/res/drawable/hero_12_34.png",
+    );
+    expect(project.text("mobile-app/asset-manifest.json")).toContain(
+      "mobile-app/app/src/main/res/drawable/vector_55_66.png",
     );
     expect(project.text("mobile-app/README.md")).toContain("gradlew assembleDebug");
     expect(project.text("mobile-app/.gitignore")).toContain("local.properties");

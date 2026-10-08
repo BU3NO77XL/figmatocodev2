@@ -1,5 +1,6 @@
 import { zipSync } from "fflate";
 import type { DownloadProjectFormat } from "types";
+import { toAndroidDrawableFileName as toDrawableFileName } from "./common/assetNames";
 
 export interface ProjectImage {
   name: string;
@@ -22,6 +23,7 @@ export interface ProjectVector {
 export type ProjectAsset = ProjectImage | ProjectVector;
 
 const IMAGE_PLACEHOLDER_PATTERN = /__FIGMA_IMAGE_(.*?)__/g;
+const VECTOR_PLACEHOLDER_PATTERN = /__FIGMA_VECTOR_(.*?)__/g;
 const isVectorAsset = (asset: ProjectAsset): asset is ProjectVector =>
   asset.kind === "vector";
 const escapeRegExp = (value: string) =>
@@ -100,13 +102,6 @@ const getComposeSourceDirectory = (androidPackage: string) =>
   `${androidPackage.replace(/\./g, "/")}/`;
 const getComposeDrawableDirectory = (rootName: string) =>
   `${rootName || "figma-export"}/app/src/main/res/drawable/`;
-const toDrawableFileName = (fileName: string) => {
-  const base = removeExtension(fileName)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  return `${base || "image"}.png`;
-};
 const toDrawableResource = (fileName: string) =>
   `R.drawable.${removeExtension(toDrawableFileName(fileName))}`;
 const escapeXml = (value: string) =>
@@ -193,6 +188,14 @@ export const extractProjectImageNodeIds = (code: string): Set<string> => {
   return nodeIds;
 };
 
+export const extractProjectVectorNodeIds = (code: string): Set<string> => {
+  const nodeIds = new Set<string>();
+  for (const match of code.matchAll(VECTOR_PLACEHOLDER_PATTERN)) {
+    nodeIds.add(decodeURIComponent(match[1]));
+  }
+  return nodeIds;
+};
+
 export const replaceProjectImagePlaceholders = (
   code: string,
   images: ProjectImage[],
@@ -241,9 +244,34 @@ export const replaceProjectVectorReferences = (
   code: string,
   assets: ProjectAsset[],
   rootName = "figma-export",
+  format: DownloadProjectFormat = "flutter",
 ): string => {
   let replacedCode = code;
   const vectorDirectory = getFlutterVectorDirectory(rootName);
+  const vectors = assets.filter(isVectorAsset);
+
+  if (format === "compose") {
+    const vectorsByNodeId = new Map(
+      vectors.map((vector) => [vector.nodeId, vector]),
+    );
+    replacedCode = replacedCode.replace(
+      /painterResource\("__FIGMA_VECTOR_(.*?)__"\)/g,
+      (_match, encodedNodeId: string) => {
+        const nodeId = decodeURIComponent(encodedNodeId);
+        const vector = vectorsByNodeId.get(nodeId);
+        if (!vector) {
+          throw new Error(`Missing exported vector for Figma node ${nodeId}.`);
+        }
+        return `painterResource(${toDrawableResource(vector.name)})`;
+      },
+    );
+
+    if (replacedCode.includes("__FIGMA_VECTOR_")) {
+      throw new Error("Failed to resolve every exported vector reference.");
+    }
+
+    return replacedCode;
+  }
 
   for (const asset of assets) {
     if (!isVectorAsset(asset)) continue;
@@ -1132,6 +1160,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
 `);
+
     files[`${rootDir}/app/src/main/AndroidManifest.xml`] = encodeText(`<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -1199,7 +1228,7 @@ gradle wrapper
 ./gradlew assembleDebug
 \`\`\`
 
-The launcher activity is \`app/src/main/java/${getComposeSourceDirectory(androidPackage)}MainActivity.kt\`, the generated screen is \`app/src/main/java/${getComposeSourceDirectory(androidPackage)}ui/${screenFile}\`, exported images are in \`app/src/main/res/drawable/\`, and asset provenance is recorded in \`asset-manifest.json\`.
+The launcher activity is \`app/src/main/java/${getComposeSourceDirectory(androidPackage)}MainActivity.kt\`, the generated screen is \`app/src/main/java/${getComposeSourceDirectory(androidPackage)}ui/${screenFile}\`, exported images and vector assets are in \`app/src/main/res/drawable/\`, and asset provenance is recorded in \`asset-manifest.json\`.
 
 ## Before shipping
 
@@ -1385,6 +1414,12 @@ dist/
           : {}),
       });
     }
+  } else if (format === "compose") {
+    for (const vector of vectors) {
+      files[
+        `${getComposeDrawableDirectory(rootDir)}${toDrawableFileName(vector.name)}`
+      ] = vector.bytes;
+    }
   }
 
   const manifestPath =
@@ -1405,7 +1440,9 @@ dist/
           ? `${rootDir}/Assets.xcassets/${removeExtension(asset.name)}.imageset/${asset.name}`
           : format === "reactnative"
             ? `${getReactNativeVectorDirectory(rootDir)}${asset.name}`
-            : `${getFlutterVectorDirectory(rootDir)}${asset.name}`
+            : format === "compose"
+              ? `${getComposeDrawableDirectory(rootDir)}${toDrawableFileName(asset.name)}`
+              : `${getFlutterVectorDirectory(rootDir)}${asset.name}`
         : format === "reactnative"
           ? `${getReactNativeAssetDirectory(rootDir)}${asset.name}`
           : getImagePath(asset, format, rootDir),

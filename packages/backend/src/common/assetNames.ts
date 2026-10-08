@@ -1,3 +1,5 @@
+const removeExtension = (fileName: string) => fileName.replace(/\.[^.]+$/, "");
+
 const cleanNodeId = (nodeId: string) =>
   nodeId.replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "");
 
@@ -31,3 +33,21 @@ export const getFlutterVectorAssetPath = (
   screenName
     ? `assets/${screenName}/vectors/${createVectorAssetName(nodeId, "svg", nodeName)}`
     : `assets/vectors/${createVectorAssetName(nodeId, "svg", nodeName)}`;
+
+export const toAndroidDrawableFileName = (fileName: string) => {
+  const base = removeExtension(fileName)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return `${base || "image"}.png`;
+};
+
+export const getComposeVectorDrawableFileName = (
+  nodeId: string,
+  nodeName?: string,
+) => toAndroidDrawableFileName(createVectorAssetName(nodeId, "png", nodeName));
+
+export const getComposeVectorDrawableName = (
+  nodeId: string,
+  nodeName?: string,
+) => removeExtension(getComposeVectorDrawableFileName(nodeId, nodeName));
