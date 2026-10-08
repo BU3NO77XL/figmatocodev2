@@ -49,6 +49,19 @@ const GENERATED_PROJECT_VERSIONS = {
   viteReact: "^6.0.5",
 } as const;
 
+const GENERATED_ANDROID_VERSIONS = {
+  activityCompose: "1.9.3",
+  androidGradlePlugin: "8.7.3",
+  compileSdk: 35,
+  composeBom: "2024.12.01",
+  gradle: "8.9",
+  javaVersion: "17",
+  jvmTarget: "17",
+  kotlin: "2.1.0",
+  minSdk: 24,
+  targetSdk: 35,
+} as const;
+
 const removeExtension = (fileName: string) => fileName.replace(/\.[^.]+$/, "");
 const toPackageName = (rootName: string) =>
   (rootName || "figma-export")
@@ -76,6 +89,37 @@ const getReactNativeAssetDirectory = (rootName: string) =>
 const getReactNativeVectorDirectory = (rootName: string) =>
   `assets/${toPackageName(rootName)}/vectors/`;
 const getReactNativeComponentDirectory = () => "src/components/";
+const toAndroidPackageName = (rootName: string) => {
+  const segments = toPackageName(rootName)
+    .split("-")
+    .filter(Boolean)
+    .map((segment) => (/^[0-9]/.test(segment) ? `pkg${segment}` : segment));
+  return `com.figmaexport.${segments.length > 0 ? segments.join(".") : "app"}`;
+};
+const getComposeSourceDirectory = (androidPackage: string) =>
+  `${androidPackage.replace(/\./g, "/")}/`;
+const getComposeDrawableDirectory = (rootName: string) =>
+  `${rootName || "figma-export"}/app/src/main/res/drawable/`;
+const toDrawableFileName = (fileName: string) => {
+  const base = removeExtension(fileName)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return `${base || "image"}.png`;
+};
+const toDrawableResource = (fileName: string) =>
+  `R.drawable.${removeExtension(toDrawableFileName(fileName))}`;
+const escapeXml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+const splitComposeScreenEntrypoint = (code: string) => {
+  const entrypoint = /^\s*fun\s+(\w+)Screen\s*\(\s*\)/m.exec(code);
+  return entrypoint ? entrypoint[1] : null;
+};
 
 const splitFlutterEntrypoint = (code: string) => {
   const entrypointPattern =
@@ -114,6 +158,10 @@ const getImageCodePath = (
     return `../${getReactNativeAssetDirectory(rootName)}${image.name}`;
   }
 
+  if (format === "compose") {
+    return toDrawableResource(image.name);
+  }
+
   return getImagePath(image, format, rootName);
 };
 
@@ -127,6 +175,9 @@ const getImagePath = (
   }
   if (format === "swiftui") {
     return removeExtension(image.name);
+  }
+  if (format === "compose") {
+    return `${getComposeDrawableDirectory(rootName)}${toDrawableFileName(image.name)}`;
   }
   if (format === "html") {
     return `images/${image.name}`;
@@ -164,6 +215,12 @@ export const replaceProjectImagePlaceholders = (
       /NetworkImage\("__FIGMA_IMAGE_(.*?)__"\)/g,
       (_match, encodedNodeId: string) =>
         `AssetImage("${getImageCodePath(resolveImage(encodedNodeId), format, rootName)}")`,
+    );
+  } else if (format === "compose") {
+    replacedCode = replacedCode.replace(
+      /painterResource\("__FIGMA_IMAGE_(.*?)__"\)/g,
+      (_match, encodedNodeId: string) =>
+        `painterResource(${getImageCodePath(resolveImage(encodedNodeId), format, rootName)})`,
     );
   }
 
@@ -976,6 +1033,188 @@ dist/
 .env*
 !.env.example
 `);
+  } else if (format === "compose") {
+    const androidPackage = toAndroidPackageName(rootDir);
+    const sourceDirectory = `${rootDir}/app/src/main/java/${getComposeSourceDirectory(androidPackage)}`;
+    const screenEntrypoint = splitComposeScreenEntrypoint(code);
+    const screenName = screenEntrypoint ?? reactComponentName;
+    const screenFile = `${screenName}.kt`;
+    const composeImports = screenEntrypoint
+      ? `import ${androidPackage}.ui.${screenName}Screen\n`
+      : "";
+    const composeContent = screenEntrypoint
+      ? `${screenName}Screen()`
+      : "// Open the generated source in ui/ and call your top-level composable here.";
+
+    files[`${rootDir}/settings.gradle.kts`] = encodeText(`pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "${escapeXml(rootDir)}"
+include(":app")
+`);
+    files[`${rootDir}/build.gradle.kts`] = encodeText(`plugins {
+    id("com.android.application") version "${GENERATED_ANDROID_VERSIONS.androidGradlePlugin}" apply false
+    id("org.jetbrains.kotlin.android") version "${GENERATED_ANDROID_VERSIONS.kotlin}" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "${GENERATED_ANDROID_VERSIONS.kotlin}" apply false
+}
+`);
+    files[`${rootDir}/gradle.properties`] = encodeText(`org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+org.gradle.parallel=true
+android.useAndroidX=true
+android.nonTransitiveRClass=true
+kotlin.code.style=official
+`);
+    files[`${rootDir}/gradle/wrapper/gradle-wrapper.properties`] = encodeText(`distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\\://services.gradle.org/distributions/gradle-${GENERATED_ANDROID_VERSIONS.gradle}-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+`);
+    files[`${rootDir}/app/build.gradle.kts`] = encodeText(`plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+}
+
+android {
+    namespace = "${androidPackage}"
+    compileSdk = ${GENERATED_ANDROID_VERSIONS.compileSdk}
+
+    defaultConfig {
+        applicationId = "${androidPackage}"
+        minSdk = ${GENERATED_ANDROID_VERSIONS.minSdk}
+        targetSdk = ${GENERATED_ANDROID_VERSIONS.targetSdk}
+        versionCode = 1
+        versionName = "1.0"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_${GENERATED_ANDROID_VERSIONS.javaVersion}
+        targetCompatibility = JavaVersion.VERSION_${GENERATED_ANDROID_VERSIONS.javaVersion}
+    }
+
+    kotlinOptions {
+        jvmTarget = "${GENERATED_ANDROID_VERSIONS.jvmTarget}"
+    }
+
+    buildFeatures {
+        compose = true
+    }
+}
+
+dependencies {
+    implementation(platform("androidx.compose:compose-bom:${GENERATED_ANDROID_VERSIONS.composeBom}"))
+    implementation("androidx.activity:activity-compose:${GENERATED_ANDROID_VERSIONS.activityCompose}")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+}
+`);
+    files[`${rootDir}/app/src/main/AndroidManifest.xml`] = encodeText(`<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
+`);
+    files[`${rootDir}/app/src/main/res/values/strings.xml`] = encodeText(`<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">${escapeXml(rootDir)}</string>
+</resources>
+`);
+    files[`${sourceDirectory}MainActivity.kt`] = encodeText(`package ${androidPackage}
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+${composeImports}
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            ${composeContent}
+        }
+    }
+}
+`);
+    files[`${sourceDirectory}ui/${screenFile}`] = encodeText(
+      `package ${androidPackage}.ui\n\n${
+        code.includes("painterResource(")
+          ? `import ${androidPackage}.R\n\n`
+          : ""
+      }${code}\n`,
+    );
+    files[`${rootDir}/README.md`] = encodeText(`# ${rootDir}
+
+Jetpack Compose (Kotlin) project generated by Figma to Code.
+
+## Requirements
+
+- Android Studio with the Android SDK (compileSdk ${GENERATED_ANDROID_VERSIONS.compileSdk})
+- JDK ${GENERATED_ANDROID_VERSIONS.jvmTarget}
+
+## Run the project
+
+Open this folder in Android Studio, let it create the Gradle wrapper, then run the \`app\` configuration on a device or emulator.
+
+From the command line, with Gradle ${GENERATED_ANDROID_VERSIONS.gradle}+ installed:
+
+\`\`\`sh
+gradle wrapper
+./gradlew assembleDebug
+\`\`\`
+
+The launcher activity is \`app/src/main/java/${getComposeSourceDirectory(androidPackage)}MainActivity.kt\`, the generated screen is \`app/src/main/java/${getComposeSourceDirectory(androidPackage)}ui/${screenFile}\`, exported images are in \`app/src/main/res/drawable/\`, and asset provenance is recorded in \`asset-manifest.json\`.
+
+## Before shipping
+
+Review responsive behavior, semantics, accessibility, navigation, state management, and platform-specific styling. This export is a clean visual starting point, not a complete production application.
+`);
+    files[`${rootDir}/.gitignore`] = encodeText(`*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+`);
   } else {
     const rnScreenFile = `${reactComponentName}.tsx`;
     const reactNativeSource = splitReactNativeGeneratedSource(
@@ -1100,6 +1339,10 @@ dist/
             version: 1,
           },
         });
+    } else if (format === "compose") {
+      files[
+        `${getComposeDrawableDirectory(rootDir)}${toDrawableFileName(image.name)}`
+      ] = image.bytes;
     } else if (format === "html") {
       files[`${rootDir}/images/${image.name}`] = image.bytes;
     } else if (format === "reactnative") {
@@ -1145,7 +1388,7 @@ dist/
   }
 
   const manifestPath =
-    format === "html" || format === "swiftui"
+    format === "html" || format === "swiftui" || format === "compose"
       ? `${rootDir}/asset-manifest.json`
       : "asset-manifest.json";
   files[manifestPath] = writeJson({

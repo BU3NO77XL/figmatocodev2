@@ -16,7 +16,8 @@ let localSettings: PluginSettings;
 let previousExecutionCache: string[];
 
 // Pre-compute static imports for performance
-const COMPOSE_IMPORTS = `import androidx.compose.foundation.layout.*
+const COMPOSE_IMPORTS = `import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -162,20 +164,22 @@ const composeWidgetGenerator = (
         comp.push(composeContainer(node, ""));
         break;
       case "GROUP":
-        comp.push(composeGroup(node));
+        comp.push(composeGroup(node as GroupNode));
         break;
       case "FRAME":
       case "INSTANCE":
       case "COMPONENT":
       case "COMPONENT_SET":
       case "SLOT":
-        comp.push(composeFrame(node));
+        comp.push(
+          composeFrame(node as SceneNode & BaseFrameMixin & MinimalBlendMixin),
+        );
         break;
       case "SECTION":
         comp.push(composeContainer(node, ""));
         break;
       case "TEXT":
-        comp.push(composeText(node));
+        comp.push(composeText(node as TextNode));
         break;
       case "VECTOR":
         addWarning("VectorNodes are not fully supported in Compose");
@@ -202,10 +206,13 @@ const composeGroup = (node: GroupNode): string => {
 const composeContainer = (node: SceneNode, child: string): string => {
   let propChild = "";
 
+  const imagePlaceholderMode = localSettings.imagePlaceholderMode ?? "remote";
+
   if (
     "fills" in node &&
     node.fills !== figma.mixed &&
-    retrieveTopFill(node.fills as any)?.type === "IMAGE"
+    retrieveTopFill(node.fills as any)?.type === "IMAGE" &&
+    imagePlaceholderMode !== "asset"
   ) {
     addWarning("Image fills are replaced with placeholders in Compose");
   }
@@ -214,7 +221,7 @@ const composeContainer = (node: SceneNode, child: string): string => {
     propChild = child;
   }
 
-  const builder = new ComposeDefaultBuilder(propChild)
+  const builder = new ComposeDefaultBuilder(propChild, imagePlaceholderMode)
     .createContainer(node)
     .blendAttr(node)
     .position(node);

@@ -52,6 +52,7 @@ const frameworks: Framework[] = [
   "Tailwind",
   "Flutter",
   "SwiftUI",
+  "Compose",
   "ReactNative",
 ];
 const frameworkLabels: Record<Framework, string> = {
@@ -94,14 +95,15 @@ const FrameworkTabs = ({
   setShowAbout,
 }: FrameworkTabsProps) => {
   return (
-    <div className="grid w-full grid-cols-3 gap-1 min-[420px]:grid-cols-5">
+    <div className="grid w-full grid-cols-3 gap-1 min-[420px]:grid-cols-6">
       {frameworks.map((tab) => (
         <Button
           variant="ghost"
           size="sm"
           key={`tab ${tab}`}
           aria-pressed={selectedFramework === tab && !showAbout}
-          className={`h-8 w-full rounded-md px-2 text-[12px] leading-none min-[420px]:text-[11px] ${
+          title={frameworkLabels[tab]}
+          className={`h-8 min-w-0 w-full truncate rounded-md px-1.5 text-[12px] leading-none min-[420px]:text-[11px] ${
             selectedFramework === tab && !showAbout
               ? "bg-primary text-primary-foreground shadow-xs hover:bg-primary hover:text-primary-foreground dark:hover:bg-primary"
               : "bg-muted text-foreground hover:bg-primary/90 hover:text-primary-foreground dark:hover:bg-primary/90"

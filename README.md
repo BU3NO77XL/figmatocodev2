@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Generate editable HTML, React, Svelte, Tailwind, Flutter, SwiftUI, and React Native from a Figma selection—without an account, generation credits, or design uploads.
+  Generate editable HTML, React, Svelte, Tailwind, Flutter, SwiftUI, Jetpack Compose, and React Native from a Figma selection—without an account, generation credits, or design uploads.
 </p>
 
 <p align="center">
@@ -18,6 +18,7 @@
 
 ## Recent updates
 
+- **Jetpack Compose** — new output target, with snippet/composable/screen modes and an Android Gradle project download that includes image drawables.
 - **React Native** — new output target for generating React Native components from your Figma selection.
 - **Structure download with assets** — generated projects now include the folder structure plus local images, icons, and vector assets, with an `asset-manifest.json` describing every exported file.
 - **i18n / language support** — the interface is now available in English and Portuguese (pt-BR), with language switching built in.
@@ -43,6 +44,7 @@ The generator is deterministic and runs inside Figma's plugin sandbox. It does n
 | Tailwind CSS | HTML, React (JSX), Twig; supports Tailwind 3 and Tailwind 4 |
 | Flutter      | Full app, stateless widget, or snippet                      |
 | SwiftUI      | Preview, `View` struct, or snippet                          |
+| Compose      | Screen, composable, or snippet                              |
 | React Native | Component or snippet                                        |
 
 The plugin can also package generated code and local assets into downloadable starters:
@@ -50,6 +52,7 @@ The plugin can also package generated code and local assets into downloadable st
 - Web: Vite, Next.js, or static HTML
 - Flutter: source, `pubspec.yaml`, image assets, SVG vector assets, automatic PNG vector fallbacks, and setup instructions
 - SwiftUI: source, asset catalog, and setup instructions
+- Compose: an Android Gradle project with the activity, generated screen, image drawables, and setup instructions
 
 These exports are deliberately small and dependency-light. They are starting points, not generated production applications.
 Every project download includes an `asset-manifest.json` with the originating Figma node, output path, format, byte size, source strategy, and any vector fallback reason.
@@ -125,7 +128,7 @@ The generator behaves more like a small compiler than a screenshot-to-code servi
 1. **Read** — inspect the selected Figma nodes and their layout and style metadata.
 2. **Normalize** — convert them into an internal tree that can be transformed without modifying the source document.
 3. **Optimize** — resolve parent-child relationships, Auto Layout, alignment, sizing, and positioning.
-4. **Generate** — send the normalized tree to the selected HTML, Tailwind, Flutter, SwiftUI, or React Native backend.
+4. **Generate** — send the normalized tree to the selected HTML, Tailwind, Flutter, SwiftUI, Compose, or React Native backend.
 5. **Explain** — return the code, preview data, extracted assets, and conversion warnings to the UI.
 
 Because the rules are public TypeScript, the conversion can be inspected, tested, and improved without depending on a hosted API.

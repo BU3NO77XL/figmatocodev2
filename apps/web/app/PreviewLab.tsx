@@ -15,6 +15,7 @@ const defaultSettings: PluginSettings = {
   flutterGenerationMode: "snippet",
   swiftUIGenerationMode: "snippet",
   composeGenerationMode: "snippet",
+  reactNativeGenerationMode: "screen",
   roundTailwindValues: true,
   roundTailwindColors: true,
   useColorVariables: true,
@@ -62,6 +63,24 @@ const swiftUISnippet = `VStack(alignment: .leading, spacing: 16) {
 }
 .padding(32)
 .background(.white, in: RoundedRectangle(cornerRadius: 24))`;
+
+const composeSnippet = `Column(
+  modifier = Modifier
+    .clip(RoundedCornerShape(24.dp))
+    .background(Color.White)
+    .padding(32.dp),
+  verticalArrangement = Arrangement.spacedBy(16.dp)
+) {
+  Text(
+    text = "New",
+    color = Color(0xFF287A45)
+  )
+  Text(
+    text = "Ship the design, not the cleanup",
+    fontSize = 24.sp,
+    fontWeight = FontWeight.SemiBold
+  )
+}`;
 
 function indent(code: string, spaces = 2) {
   const padding = " ".repeat(spaces);
@@ -201,6 +220,51 @@ ${featureCard}
   }
 }
 
+function getComposeSample(settings: PluginSettings) {
+  const composable = `@Composable
+fun FeatureCard() {
+${indent(composeSnippet, 4)}
+}`;
+
+  switch (settings.composeGenerationMode) {
+    case "composable":
+      return composable;
+    case "screen":
+      return `import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+@Composable
+fun FeatureCardScreen() {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color(0xFF1A2034)
+    ) {
+        FeatureCard()
+    }
+}
+
+${composable}
+
+@Preview(showBackground = true)
+@Composable
+fun FeatureCardPreview() {
+    FeatureCard()
+}`;
+    default:
+      return composeSnippet;
+  }
+}
+
 function getSampleCode(framework: Framework, settings: PluginSettings) {
   switch (framework) {
     case "HTML":
@@ -211,6 +275,8 @@ function getSampleCode(framework: Framework, settings: PluginSettings) {
       return getFlutterSample(settings);
     case "SwiftUI":
       return getSwiftUISample(settings);
+    case "Compose":
+      return getComposeSample(settings);
     default:
       return "";
   }

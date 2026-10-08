@@ -90,6 +90,7 @@ export type ErrorMessage = Message & {
   error: string;
 };
 export type DownloadProjectFormat =
+  | "compose"
   | "flutter"
   | "html"
   | "nextjs"

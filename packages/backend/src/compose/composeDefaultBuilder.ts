@@ -5,6 +5,7 @@ import {
 } from "./builderImpl/composeBlend";
 
 import { composeContainer } from "./composeContainer";
+import { AltNode } from "../alt_api_types";
 import {
   commonIsAbsolutePosition,
   getCommonPositionValue,
@@ -13,13 +14,22 @@ import {
 export class ComposeDefaultBuilder {
   child: string;
   rotationApplied: boolean = false;
+  imagePlaceholderMode: "remote" | "asset";
 
-  constructor(optChild: string) {
+  constructor(
+    optChild: string,
+    imagePlaceholderMode: "remote" | "asset" = "remote",
+  ) {
     this.child = optChild;
+    this.imagePlaceholderMode = imagePlaceholderMode;
   }
 
   createContainer(node: SceneNode): this {
-    this.child = composeContainer(node, this.child);
+    this.child = composeContainer(
+      node as SceneNode & MinimalBlendMixin,
+      this.child,
+      this.imagePlaceholderMode,
+    );
     this.rotationApplied = true;
 
     return this;
@@ -27,7 +37,7 @@ export class ComposeDefaultBuilder {
 
   blendAttr(node: SceneNode): this {
     if ("rotation" in node && !this.rotationApplied) {
-      this.child = composeRotation(node, this.child);
+      this.child = composeRotation(node as unknown as AltNode, this.child);
     }
 
     if ("visible" in node) {

@@ -36,6 +36,10 @@ const downloadOptions: Array<{
 ];
 
 const getDownloadOptions = (framework: Framework, swiftSourceLabel: string) => {
+  if (framework === "Compose") {
+    return [{ label: "Kotlin (Android)", format: "compose" as const }];
+  }
+
   if (framework === "Flutter") {
     return [{ label: "Flutter", format: "flutter" as const }];
   }

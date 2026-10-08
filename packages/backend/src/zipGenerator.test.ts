@@ -76,6 +76,19 @@ describe("project image references", () => {
     ).toBe(`Image("${expectedPath}")`);
   });
 
+  it("uses painterResource with a drawable reference for Compose", () => {
+    expect(
+      replaceProjectImagePlaceholders(
+        `Image(\n    painter = painterResource("${placeholder}"),\n    contentDescription = null\n)`,
+        [image],
+        "compose",
+        "mobile-app",
+      ),
+    ).toBe(
+      `Image(\n    painter = painterResource(R.drawable.hero_12_34),\n    contentDescription = null\n)`,
+    );
+  });
+
   it("fails instead of substituting an unrelated image", () => {
     expect(() =>
       replaceProjectImagePlaceholders(`<img src="${placeholder}">`, [], "html"),
@@ -444,5 +457,86 @@ export default function HomeScreen() {
     );
     expect(project.text("README.md")).toContain("src/Home.tsx");
     expect(project.text("package.json")).toContain('"expo-blur"');
+  });
+
+  it("creates an Android Gradle project for Jetpack Compose", () => {
+    const kotlinScreen = `import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+
+@Composable
+fun MobileAppScreen() {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color(0xFF1A2034)
+    ) {
+        MobileApp()
+    }
+}
+
+@Composable
+fun MobileApp() {
+    Image(
+        painter = painterResource(R.drawable.hero_12_34),
+        contentDescription = null,
+        modifier = Modifier.size(120.dp)
+    )
+}`;
+
+    const project = unzipProject(
+      generateProjectZip(kotlinScreen, "Compose", [image], "compose", "mobile-app"),
+    );
+    const packageRoot = "mobile-app/app/src/main/java/com/figmaexport/mobile/app";
+
+    expect(project.text("mobile-app/settings.gradle.kts")).toContain(
+      'rootProject.name = "mobile-app"',
+    );
+    expect(project.text("mobile-app/settings.gradle.kts")).toContain(
+      'include(":app")',
+    );
+    expect(project.text("mobile-app/build.gradle.kts")).toContain(
+      'id("com.android.application")',
+    );
+    expect(project.text("mobile-app/app/build.gradle.kts")).toContain(
+      'namespace = "com.figmaexport.mobile.app"',
+    );
+    expect(project.text("mobile-app/app/build.gradle.kts")).toContain(
+      "compose-bom",
+    );
+    expect(project.text("mobile-app/gradle/wrapper/gradle-wrapper.properties")).toContain(
+      "gradle-8.9-bin.zip",
+    );
+    expect(
+      project.text("mobile-app/app/src/main/AndroidManifest.xml"),
+    ).toContain('android:name=".MainActivity"');
+    expect(
+      project.text("mobile-app/app/src/main/res/values/strings.xml"),
+    ).toContain('<string name="app_name">mobile-app</string>');
+
+    const activity = project.text(`${packageRoot}/MainActivity.kt`);
+    expect(activity).toContain("package com.figmaexport.mobile.app");
+    expect(activity).toContain(
+      "import com.figmaexport.mobile.app.ui.MobileAppScreen",
+    );
+    expect(activity).toContain("MobileAppScreen()");
+
+    const screen = project.text(`${packageRoot}/ui/MobileApp.kt`);
+    expect(screen).toContain("package com.figmaexport.mobile.app.ui");
+    expect(screen).toContain("import com.figmaexport.mobile.app.R");
+    expect(screen).toContain(kotlinScreen);
+
+    expect(
+      project.files[
+        "mobile-app/app/src/main/res/drawable/hero_12_34.png"
+      ],
+    ).toEqual(image.bytes);
+    expect(project.text("mobile-app/asset-manifest.json")).toContain(
+      "mobile-app/app/src/main/res/drawable/hero_12_34.png",
+    );
+    expect(project.text("mobile-app/README.md")).toContain("gradlew assembleDebug");
+    expect(project.text("mobile-app/.gitignore")).toContain("local.properties");
   });
 });

@@ -15,6 +15,10 @@ import {
   htmlColorFromFill,
   htmlGradientFromFills,
 } from "../../html/builderImpl/htmlColor";
+import {
+  composeColorValue,
+  composeGradientValue,
+} from "../../compose/builderImpl/composeColor";
 import { calculateContrastRatio } from "./commonUI";
 import {
   LinearGradientConversion,
@@ -22,6 +26,7 @@ import {
   Framework,
 } from "types";
 import { processColorVariables } from "../../altNodes/jsonNodeConversion";
+import { GradientPaint } from "../../api_types";
 
 export const retrieveGenericSolidUIColors = async (
   framework: Framework,
@@ -72,6 +77,8 @@ const convertSolidColor = async (
 
   if (framework === "Flutter") {
     output.exportValue = flutterColor(fill.color, opacity);
+  } else if (framework === "Compose") {
+    output.exportValue = composeColorValue(fill.color, opacity);
   } else if (framework === "HTML") {
     output.exportValue = htmlColorFromFill(fill as any);
   } else if (framework === "Tailwind") {
@@ -100,7 +107,7 @@ export const retrieveGenericLinearGradients = async (
       if (paint.type === "GRADIENT_LINEAR") {
         let fill = { ...paint };
         const t = fill.gradientTransform;
-        fill.gradientHandlePositions = [
+        (fill as unknown as GradientPaint).gradientHandlePositions = [
           { x: t[0][2], y: t[1][2] }, // Start: (e, f)
           { x: t[0][0] + t[0][2], y: t[1][0] + t[1][2] }, // End: (a + e, b + f)
         ];
@@ -130,23 +137,30 @@ export const retrieveGenericLinearGradients = async (
         let exportValue = "";
         switch (framework) {
           case "Flutter":
-            exportValue = flutterGradient(fill);
+            exportValue = flutterGradient(fill as unknown as GradientPaint);
+            break;
+          case "Compose":
+            exportValue = composeGradientValue(fill);
             break;
           case "HTML":
-            exportValue = htmlGradientFromFills(fill);
+            exportValue = htmlGradientFromFills(
+              fill as unknown as GradientPaint,
+            );
             break;
           case "Tailwind":
-            exportValue = tailwindGradient(fill);
+            exportValue = tailwindGradient(fill as unknown as GradientPaint);
             break;
           case "SwiftUI":
             exportValue = swiftuiGradient(fill);
             break;
           case "ReactNative":
-            exportValue = htmlGradientFromFills(fill);
+            exportValue = htmlGradientFromFills(
+              fill as unknown as GradientPaint,
+            );
             break;
         }
         colorStr.push({
-          cssPreview: htmlGradientFromFills(fill),
+          cssPreview: htmlGradientFromFills(fill as unknown as GradientPaint),
           exportValue,
         });
       }

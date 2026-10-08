@@ -4,6 +4,7 @@ import {
   flutterMain,
   tailwindMain,
   swiftuiMain,
+  composeMain,
   reactNativeMain,
   htmlMain,
   extractProjectImageNodeIds,
@@ -30,6 +31,7 @@ import { retrieveGenericSolidUIColors } from "backend/src/common/retrieveUI/retr
 import { flutterCodeGenTextStyles } from "backend/src/flutter/flutterMain";
 import { htmlCodeGenTextStyles } from "backend/src/html/htmlMain";
 import { swiftUICodeGenTextStyles } from "backend/src/swiftui/swiftuiMain";
+import { composeCodeGenTextStyles } from "backend/src/compose/composeMain";
 import {
   DownloadProjectFormat,
   PluginSettings,
@@ -160,9 +162,10 @@ const safeRun = async (settings: PluginSettings) => {
 };
 
 const allowedFormatsByFramework: Record<
-  "Flutter" | "HTML" | "SwiftUI" | "Tailwind" | "ReactNative",
+  "Compose" | "Flutter" | "HTML" | "SwiftUI" | "Tailwind" | "ReactNative",
   DownloadProjectFormat[]
 > = {
+  Compose: ["compose"],
   Flutter: ["flutter"],
   HTML: ["html", "nextjs", "vite"],
   ReactNative: ["reactnative"],
@@ -563,6 +566,13 @@ const generateDownloadCode = async (
     });
   }
 
+  if (pluginSettings.framework === "Compose") {
+    return composeMain(convertedSelection, {
+      ...settings,
+      composeGenerationMode: "screen",
+    });
+  }
+
   if (pluginSettings.framework === "ReactNative") {
     return reactNativeMain(convertedSelection, {
       ...settings,
@@ -591,7 +601,7 @@ const generateDownloadCode = async (
 
 const downloadProject = async (format: DownloadProjectFormat) => {
   if (
-    !["flutter", "html", "nextjs", "reactnative", "swiftui", "vite"].includes(
+    !["compose", "flutter", "html", "nextjs", "reactnative", "swiftui", "vite"].includes(
       format,
     )
   ) {
@@ -599,10 +609,7 @@ const downloadProject = async (format: DownloadProjectFormat) => {
   }
 
   const pluginSettings = { ...userPluginSettings };
-  if (
-    pluginSettings.framework === "Compose" ||
-    !allowedFormatsByFramework[pluginSettings.framework].includes(format)
-  ) {
+  if (!allowedFormatsByFramework[pluginSettings.framework].includes(format)) {
     throw new Error(
       `${format} export is not available for ${pluginSettings.framework}.`,
     );
@@ -934,7 +941,7 @@ const codegenMode = async () => {
               title: "Code",
               code: (
                 await htmlMain(
-                  convertedSelection,
+                  convertedSelection as unknown as SceneNode[],
                   { ...userPluginSettings, htmlGenerationMode: "html" },
                   true,
                 )
@@ -953,7 +960,7 @@ const codegenMode = async () => {
               title: "Code",
               code: (
                 await htmlMain(
-                  convertedSelection,
+                  convertedSelection as unknown as SceneNode[],
                   { ...userPluginSettings, htmlGenerationMode: "jsx" },
                   true,
                 )
@@ -973,7 +980,7 @@ const codegenMode = async () => {
               title: "Code",
               code: (
                 await htmlMain(
-                  convertedSelection,
+                  convertedSelection as unknown as SceneNode[],
                   { ...userPluginSettings, htmlGenerationMode: "svelte" },
                   true,
                 )
@@ -993,7 +1000,7 @@ const codegenMode = async () => {
               title: "Code",
               code: (
                 await htmlMain(
-                  convertedSelection,
+                  convertedSelection as unknown as SceneNode[],
                   {
                     ...userPluginSettings,
                     htmlGenerationMode: "styled-components",
@@ -1015,7 +1022,7 @@ const codegenMode = async () => {
           return [
             {
               title: "Code",
-              code: await tailwindMain(convertedSelection, {
+              code: await tailwindMain(convertedSelection as unknown as SceneNode[], {
                 ...userPluginSettings,
                 tailwindGenerationMode:
                   language === "tailwind_jsx" ? "jsx" : "html",
@@ -1053,7 +1060,7 @@ const codegenMode = async () => {
           return [
             {
               title: "Code",
-              code: flutterMain(convertedSelection, {
+              code: flutterMain(convertedSelection as unknown as SceneNode[], {
                 ...userPluginSettings,
                 flutterGenerationMode: "snippet",
               }),
@@ -1069,7 +1076,7 @@ const codegenMode = async () => {
           return [
             {
               title: "SwiftUI",
-              code: swiftuiMain(convertedSelection, {
+              code: swiftuiMain(convertedSelection as unknown as SceneNode[], {
                 ...userPluginSettings,
                 swiftUIGenerationMode: "snippet",
               }),
@@ -1081,22 +1088,22 @@ const codegenMode = async () => {
               language: "SWIFT",
             },
           ];
-        // case "compose":
-        //   return [
-        //     {
-        //       title: "Jetpack Compose",
-        //       code: composeMain(convertedSelection, {
-        //         ...userPluginSettings,
-        //         composeGenerationMode: "snippet",
-        //       }),
-        //       language: "KOTLIN",
-        //     },
-        //     {
-        //       title: "Text Styles",
-        //       code: composeCodeGenTextStyles(),
-        //       language: "KOTLIN",
-        //     },
-        //   ];
+        case "compose":
+          return [
+            {
+              title: "Jetpack Compose",
+              code: composeMain(convertedSelection as unknown as SceneNode[], {
+                ...userPluginSettings,
+                composeGenerationMode: "snippet",
+              }),
+              language: "KOTLIN",
+            },
+            {
+              title: "Text Styles",
+              code: composeCodeGenTextStyles(),
+              language: "KOTLIN",
+            },
+          ];
         default:
           break;
       }

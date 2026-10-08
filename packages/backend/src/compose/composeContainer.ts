@@ -1,5 +1,7 @@
 import { retrieveTopFill } from "../common/retrieveFill";
+import { Paint as ApiPaint } from "../api_types";
 import { getCommonRadius } from "../common/commonRadius";
+import { getPlaceholderImage } from "../common/images";
 import { composeSize } from "./builderImpl/composeSize";
 import { composeBorder } from "./builderImpl/composeBorder";
 import { composeColor } from "./builderImpl/composeColor";
@@ -9,6 +11,7 @@ import { composePadding } from "./builderImpl/composePadding";
 export const composeContainer = (
   node: SceneNode & MinimalBlendMixin,
   child: string,
+  imagePlaceholderMode: "remote" | "asset" = "remote",
 ): string => {
   // Safety check for node dimensions
   if ("width" in node && "height" in node) {
@@ -19,15 +22,27 @@ export const composeContainer = (
 
   const modifiers: string[] = [];
   let containerType = "Box";
+  let imagePlaceholder: string | null = null;
 
   // Determine if we need a specific container type
   if ("fills" in node) {
-    const topFill = retrieveTopFill(node.fills);
+    const topFill = retrieveTopFill(
+      node.fills as unknown as readonly ApiPaint[],
+    );
     if (topFill) {
-      // Background color or gradient
-      const backgroundModifier = composeColor(topFill);
-      if (backgroundModifier) {
-        modifiers.push(backgroundModifier);
+      if (topFill.type === "IMAGE" && imagePlaceholderMode === "asset") {
+        imagePlaceholder = getPlaceholderImage(
+          "width" in node ? node.width : 0,
+          "height" in node ? node.height : 0,
+          node.id,
+          "asset",
+        );
+      } else {
+        // Background color or gradient
+        const backgroundModifier = composeColor(topFill as unknown as Paint);
+        if (backgroundModifier) {
+          modifiers.push(backgroundModifier);
+        }
       }
     }
   }
@@ -87,6 +102,41 @@ export const composeContainer = (
       : "";
 
   // Generate container
+  if (imagePlaceholder) {
+    const imageWidget = `Image(
+    painter = painterResource("${imagePlaceholder}"),
+    contentDescription = null,
+    modifier = Modifier.matchParentSize()
+)`;
+
+    if (child) {
+      if (modifierChain) {
+        return `${containerType}(
+    ${modifierChain}
+) {
+    ${imageWidget}
+    ${child}
+}`;
+      }
+      return `${containerType} {
+    ${imageWidget}
+    ${child}
+}`;
+    }
+
+    if (modifierChain) {
+      return `Image(
+    painter = painterResource("${imagePlaceholder}"),
+    contentDescription = null,
+    ${modifierChain}
+)`;
+    }
+    return `Image(
+    painter = painterResource("${imagePlaceholder}"),
+    contentDescription = null
+)`;
+  }
+
   if (child) {
     if (modifierChain) {
       return `${containerType}(

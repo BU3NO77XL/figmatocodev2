@@ -103,6 +103,7 @@ const CodePanel = (props: CodePanelProps) => {
   const showMoreButton = lineCount > initialLinesToShow;
   const showCodeCopyButton = lineCount > 5;
   const canDownloadProject =
+    selectedFramework === "Compose" ||
     selectedFramework === "Flutter" ||
     selectedFramework === "HTML" ||
     selectedFramework === "ReactNative" ||
