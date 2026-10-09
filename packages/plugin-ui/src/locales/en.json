@@ -92,7 +92,10 @@
     "precision": "Precision view",
     "precisionExact": "Precision view (exact dimensions)",
     "minimize": "Minimize preview",
-    "maximize": "Maximize preview"
+    "maximize": "Maximize preview",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomReset": "Reset zoom"
   },
   "settings": {
     "collapse": "Collapse {{title}}",

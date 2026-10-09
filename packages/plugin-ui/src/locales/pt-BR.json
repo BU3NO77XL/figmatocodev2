@@ -92,7 +92,10 @@
     "precision": "Visualização precisa",
     "precisionExact": "Visualização precisa (dimensões exatas)",
     "minimize": "Minimizar prévia",
-    "maximize": "Maximizar prévia"
+    "maximize": "Maximizar prévia",
+    "zoomIn": "Aumentar zoom",
+    "zoomOut": "Diminuir zoom",
+    "zoomReset": "Redefinir zoom"
   },
   "settings": {
     "collapse": "Recolher {{title}}",

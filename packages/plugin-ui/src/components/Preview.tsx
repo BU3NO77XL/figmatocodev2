@@ -1,9 +1,22 @@
 import React from "react";
 import { HTMLPreview } from "types";
-import { Maximize2, Minimize2, MonitorSmartphone, Circle } from "lucide-react";
+import {
+  Maximize2,
+  Minimize2,
+  MonitorSmartphone,
+  Circle,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { cn, replaceExternalImagesWithCanvas } from "../lib/utils";
 import { Button } from "./ui/button";
 import { useI18n } from "../i18n";
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 40;
+const ZOOM_STEP = 1.5;
+const clampZoom = (zoom: number) =>
+  Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
 
 // Update the component props to receive state from parent
 const Preview: React.FC<{
@@ -21,22 +34,49 @@ const Preview: React.FC<{
   const { htmlPreview, expanded, setExpanded, viewMode, bgColor, setBgColor } =
     props;
 
-  // Define consistent dimensions regardless of mode
-  const containerWidth = expanded ? 320 : 240;
-  const containerHeight = expanded ? 180 : 120;
+  const [zoomMultiplier, setZoomMultiplier] = React.useState(MIN_ZOOM);
+
+  React.useEffect(() => {
+    setZoomMultiplier(MIN_ZOOM);
+  }, [htmlPreview.size.width, htmlPreview.size.height]);
+
+  const fieldRef = React.useRef<HTMLDivElement>(null);
+  const [fieldSize, setFieldSize] = React.useState({
+    width: 240,
+    height: 120,
+  });
+
+  React.useEffect(() => {
+    const field = fieldRef.current;
+    if (!field) return;
+    const update = () =>
+      setFieldSize({
+        width: field.clientWidth || 240,
+        height: field.clientHeight || 120,
+      });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(field);
+    return () => observer.disconnect();
+  }, []);
+
+  const fieldWidth = fieldSize.width;
+  const fieldHeight = fieldSize.height;
 
   // Calculate scale factor first to use in content width calculation
   const scaleFactor = Math.min(
-    containerWidth / htmlPreview.size.width,
-    containerHeight / htmlPreview.size.height,
+    fieldWidth / htmlPreview.size.width,
+    fieldHeight / htmlPreview.size.height,
   );
+
+  const effectiveScale = scaleFactor * zoomMultiplier;
 
   // Calculate content dimensions based on view mode
   const contentWidth =
     viewMode === "desktop"
-      ? containerWidth
+      ? fieldWidth
       : viewMode === "mobile"
-        ? Math.floor(containerWidth * 0.4) // Narrower for mobile
+        ? Math.floor(fieldWidth * 0.4) // Narrower for mobile
         : htmlPreview.size.width * scaleFactor + 2; // I don't know why I need the 2, but it works always. I guess rounding error for zoom.
 
   return (
@@ -120,71 +160,118 @@ const Preview: React.FC<{
       </div>
 
       {/* Preview container */}
-      <div className="flex justify-center items-center bg-neutral-50 dark:bg-neutral-900 p-3">
-        {/* Outer container with fixed dimensions */}
+      <div className="relative flex justify-center items-center bg-neutral-50 dark:bg-neutral-900 p-3">
+        <div className="absolute top-1 right-1 z-10 flex flex-col items-stretch rounded-sm border border-neutral-200 dark:border-neutral-700 bg-white/95 dark:bg-neutral-800/95 shadow-2xs overflow-hidden">
+          <button
+            type="button"
+            onClick={() =>
+              setZoomMultiplier((zoom) => clampZoom(zoom * ZOOM_STEP))
+            }
+            disabled={zoomMultiplier >= MAX_ZOOM}
+            className="p-1 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700 disabled:opacity-40 disabled:pointer-events-none"
+            aria-label={t("preview.zoomIn")}
+            title={t("preview.zoomIn")}
+          >
+            <ZoomIn size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setZoomMultiplier(MIN_ZOOM)}
+            className="px-1 py-0.5 text-[10px] leading-none font-medium tabular-nums text-neutral-600 dark:text-neutral-300 border-y border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+            aria-label={t("preview.zoomReset")}
+            title={t("preview.zoomReset")}
+          >
+            {Math.round(effectiveScale * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setZoomMultiplier((zoom) => clampZoom(zoom / ZOOM_STEP))
+            }
+            disabled={zoomMultiplier <= MIN_ZOOM}
+            className="p-1 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700 disabled:opacity-40 disabled:pointer-events-none"
+            aria-label={t("preview.zoomOut")}
+            title={t("preview.zoomOut")}
+          >
+            <ZoomOut size={12} />
+          </button>
+        </div>
         <div
-          className="relative"
+          ref={fieldRef}
+          className="flex overflow-auto"
           style={{
-            width: containerWidth,
-            height: containerHeight,
+            width: expanded ? "100%" : 240,
+            height: expanded ? "min(70vh, 640px)" : 120,
             transition: "width 0.3s ease, height 0.3s ease",
           }}
         >
-          {/* Inner content positioned based on view mode */}
+          {/* Outer container with fixed dimensions */}
           <div
-            className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}
+            className="relative"
             style={{
-              width: contentWidth,
-              height:
-                viewMode === "mobile"
-                  ? Math.min(containerHeight * 0.9, containerHeight)
-                  : viewMode === "precision"
-                    ? htmlPreview.size.height * scaleFactor // Use scaled height for precision
-                    : containerHeight,
-              transition: "width 0.3s ease, height 0.3s ease",
+              width: fieldWidth,
+              height: fieldHeight,
+              margin: "auto",
+              zoom: zoomMultiplier,
+              transition: "width 0.3s ease, height 0.3s ease, zoom 0.3s ease",
             }}
           >
-            {/* Device frame - no background for precision mode */}
+            {/* Inner content positioned based on view mode */}
             <div
-              className={cn(
-                "w-full h-full flex justify-center items-center overflow-hidden",
-                bgColor === "white" ? "bg-white" : "bg-black",
-                viewMode === "desktop"
-                  ? "border border-neutral-300 dark:border-neutral-600 rounded-sm shadow-2xs"
-                  : viewMode === "mobile"
-                    ? "border-2 border-neutral-400 dark:border-neutral-500 rounded-xl shadow-2xs"
-                    : "border border-indigo-400 dark:border-indigo-500 rounded-sm shadow-2xs",
-                `transition-all duration-300 ease-in-out`,
-              )}
+              className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}
+              style={{
+                width: contentWidth,
+                height:
+                  viewMode === "mobile"
+                    ? Math.floor(fieldHeight * 0.9)
+                    : viewMode === "precision"
+                      ? htmlPreview.size.height * scaleFactor // Use scaled height for precision
+                      : fieldHeight,
+                transition: "width 0.3s ease, height 0.3s ease",
+              }}
             >
-              {/* Content */}
-              <div className="w-full h-full flex justify-center items-center">
-                <div
-                  style={{
-                    zoom: scaleFactor,
-                    width:
-                      viewMode === "precision"
-                        ? htmlPreview.size.width
-                        : "100%",
-                    height:
-                      viewMode === "precision"
-                        ? htmlPreview.size.height
-                        : "100%",
-                    transformOrigin: "center",
-                    maxWidth: "100%",
-                    maxHeight: "100%",
-                    aspectRatio:
-                      viewMode === "precision"
-                        ? `${htmlPreview.size.width} / ${htmlPreview.size.height}`
-                        : undefined,
-                    transition: "all 0.3s ease",
-                  }}
-                  dangerouslySetInnerHTML={{
-                    __html: replaceExternalImagesWithCanvas(
-                      htmlPreview.content,
-                    ),
-                  }}
-                />
+              {/* Device frame - no background for precision mode */}
+              <div
+                className={cn(
+                  "w-full h-full flex justify-center items-center overflow-hidden",
+                  bgColor === "white" ? "bg-white" : "bg-black",
+                  viewMode === "desktop"
+                    ? "border border-neutral-300 dark:border-neutral-600 rounded-sm shadow-2xs"
+                    : viewMode === "mobile"
+                      ? "border-2 border-neutral-400 dark:border-neutral-500 rounded-xl shadow-2xs"
+                      : "border border-indigo-400 dark:border-indigo-500 rounded-sm shadow-2xs",
+                  `transition-all duration-300 ease-in-out`,
+                )}
+              >
+                {/* Content */}
+                <div className="w-full h-full flex justify-center items-center">
+                  <div
+                    style={{
+                      zoom: scaleFactor,
+                      width:
+                        viewMode === "precision"
+                          ? htmlPreview.size.width
+                          : "100%",
+                      height:
+                        viewMode === "precision"
+                          ? htmlPreview.size.height
+                          : "100%",
+                      transformOrigin: "center",
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      aspectRatio:
+                        viewMode === "precision"
+                          ? `${htmlPreview.size.width} / ${htmlPreview.size.height}`
+                          : undefined,
+                      transition: "all 0.3s ease",
+                    }}
+                    dangerouslySetInnerHTML={{
+                      __html: replaceExternalImagesWithCanvas(
+                        htmlPreview.content,
+                      ),
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
